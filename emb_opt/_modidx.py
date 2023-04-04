@@ -5,4 +5,4 @@ d = { 'settings': { 'branch': 'main',
                 'doc_host': 'https://DarkMatterAI.github.io',
                 'git_url': 'https://github.com/DarkMatterAI/emb_opt',
                 'lib_path': 'emb_opt'},
-  'syms': {'emb_opt.core': {'emb_opt.core.foo': ('core.html#foo', 'emb_opt/core.py')}}}
+  'syms': {'emb_opt.imports': {}, 'emb_opt.utils': {'emb_opt.utils.foo': ('utils.html#foo', 'emb_opt/utils.py')}}}
