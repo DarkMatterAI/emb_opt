@@ -31,12 +31,9 @@ class QueryResult():
         }
 
 # %% ../nbs/00_utils.ipynb 5
-class QueryDataset():
-    def __init__(self, dataset:Dataset):
-        self.dataset = dataset
-        
+class QueryDataset(Dataset):
     def index_with_query_idx(self, idx: int) -> Dataset:
-        return self.dataset.filter(lambda row: row['query_idx']==idx)
+        return self.filter(lambda row: row['query_idx']==idx)
     
     def pack_with_query_idx(self, idx: int, pack_cols: list[str]) -> dict[str, np.ndarray]:
         subset = self.index_with_query_idx(idx)
@@ -45,14 +42,8 @@ class QueryDataset():
             outputs[col_name] = np.array(subset[col_name])
             
         return outputs
-        
-    @classmethod
-    def from_list(cls, data_list: list[dict]):
-        dataset = Dataset.from_list(data_list)
-        return cls(dataset)
     
     @classmethod
     def from_query_results(cls, query_results: list[QueryResult]):
         data_dicts = [i.to_dict() for i in query_results]
-        dataset = Dataset.from_list(data_dicts)
-        return cls(dataset)
+        return cls.from_list(data_dicts)

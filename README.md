@@ -11,13 +11,3 @@ documentation.
 ``` sh
 pip install emb_opt
 ```
-
-## How to use
-
-Fill me in please! Don’t forget code examples:
-
-``` python
-1+1
-```
-
-    2
