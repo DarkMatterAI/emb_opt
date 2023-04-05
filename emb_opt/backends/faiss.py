@@ -6,7 +6,10 @@ __all__ = ['FaissDatabase']
 # %% ../../nbs/03_faiss.ipynb 3
 from ..imports import *
 from ..core import QueryDataset, QueryResult, VectorDatabase
-import faiss
+try:
+    import faiss
+except:
+    warnings.warn('faiss import failed - check if package is installed')
 
 # %% ../../nbs/03_faiss.ipynb 4
 class FaissDatabase(VectorDatabase):
