@@ -5,7 +5,7 @@ __all__ = ['ChromaDatabase']
 
 # %% ../../nbs/06_chroma.ipynb 3
 from ..imports import *
-from ..core import QueryDataset, QueryResult, VectorDatabase
+from ..core import QueryResult, VectorDatabase, dataset_from_query_results
 
 try:
     import chromadb
@@ -24,7 +24,7 @@ class ChromaDatabase(VectorDatabase):
         self.k = k
         self.query_kwargs = query_kwargs if query_kwargs else {}
     
-    def query(self, query_vectors: np.ndarray) -> QueryDataset:
+    def query(self, query_vectors: np.ndarray) -> Dataset:
         
         res = self.collection.query(query_embeddings=[list(i) for i in query_vectors],
                                     include=['documents', 'embeddings', 'metadatas', 'distances'],
@@ -47,4 +47,4 @@ class ChromaDatabase(VectorDatabase):
                 results.append(result)
         
         
-        return QueryDataset.from_query_results(results)
+        return dataset_from_query_results(results)

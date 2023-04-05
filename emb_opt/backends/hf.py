@@ -5,7 +5,7 @@ __all__ = ['HFDatabase']
 
 # %% ../../nbs/04_huggingface.ipynb 3
 from ..imports import *
-from ..core import QueryDataset, QueryResult, VectorDatabase
+from ..core import QueryResult, VectorDatabase, dataset_from_query_results
 
 # %% ../../nbs/04_huggingface.ipynb 4
 class HFDatabase(VectorDatabase):
@@ -19,7 +19,7 @@ class HFDatabase(VectorDatabase):
         self.index_name = index_name
         self.k = k
         
-    def query(self, query_vectors: np.ndarray) -> QueryDataset:
+    def query(self, query_vectors: np.ndarray) -> Dataset:
         
         index = self.dataset.get_index(self.index_name)
         
@@ -42,4 +42,4 @@ class HFDatabase(VectorDatabase):
                 result = QueryResult(query_idx, db_idx, embedding, distance, data_dict)
                 results.append(result)
                 
-        return QueryDataset.from_query_results(results)
+        return dataset_from_query_results(results)

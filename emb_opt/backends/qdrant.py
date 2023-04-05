@@ -5,7 +5,7 @@ __all__ = ['QdrantDatabase']
 
 # %% ../../nbs/05_qdrant.ipynb 3
 from ..imports import *
-from ..core import QueryDataset, QueryResult, VectorDatabase
+from ..core import QueryResult, VectorDatabase, dataset_from_query_results
 
 try:
     from qdrant_client import QdrantClient
@@ -27,7 +27,7 @@ class QdrantDatabase(VectorDatabase):
         self.k = k
         self.search_request_kwargs = search_request_kwargs if search_request_kwargs else {}
     
-    def query(self, query_vectors: np.ndarray) -> QueryDataset:
+    def query(self, query_vectors: np.ndarray) -> Dataset:
         
         search_queries = [
                 models.SearchRequest(vector=list(i), 
@@ -54,4 +54,4 @@ class QdrantDatabase(VectorDatabase):
                 
                 results.append(result)
         
-        return QueryDataset.from_query_results(results)
+        return dataset_from_query_results(results)

@@ -5,7 +5,7 @@ __all__ = ['FaissDatabase']
 
 # %% ../../nbs/03_faiss.ipynb 3
 from ..imports import *
-from ..core import QueryDataset, QueryResult, VectorDatabase
+from ..core import QueryResult, VectorDatabase, dataset_from_query_results
 try:
     import faiss
 except:
@@ -23,7 +23,7 @@ class FaissDatabase(VectorDatabase):
         self.k = k
         self.search_params = search_params
         
-    def query(self, query_vectors: np.ndarray) -> QueryDataset:
+    def query(self, query_vectors: np.ndarray) -> Dataset:
         distances, indices = self.faiss_index.search(query_vectors, self.k, params=self.search_params)
         
         n_queries, n_results = indices.shape
@@ -41,4 +41,4 @@ class FaissDatabase(VectorDatabase):
                     result = QueryResult(query_idx, db_idx, embedding, distance, {})
                     results.append(result)
                 
-        return QueryDataset.from_query_results(results)
+        return dataset_from_query_results(results)
