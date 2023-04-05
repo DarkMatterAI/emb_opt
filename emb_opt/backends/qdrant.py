@@ -36,10 +36,10 @@ class QdrantDatabase(VectorDatabase):
                                      with_vector=True,
                                      **self.search_request_kwargs
                                     ) 
-                for i in query_vecs
+                for i in query_vectors
                     ]
         
-        res = client.search_batch(
+        res = self.client.search_batch(
             collection_name=self.collection_name,
             requests=search_queries
         )

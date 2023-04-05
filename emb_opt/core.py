@@ -71,7 +71,8 @@ class Score():
         
     def __call__(self, query_dataset:QueryDataset) -> QueryDataset:
         
-        return query_dataset.map(lambda item: {'score' : self.score_func(item)}, **self.map_kwargs_dict)
+        scored = query_dataset.map(lambda item: {'score' : self.score_func(item)}, **self.map_kwargs_dict)
+        return QueryDataset.from_dict(scored.to_dict())
 
 # %% ../nbs/01_core.ipynb 11
 class VectorDatabase():

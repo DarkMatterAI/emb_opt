@@ -46,4 +46,4 @@ d = { 'settings': { 'branch': 'main',
                               'emb_opt.core.VectorDatabase': ('core.html#vectordatabase', 'emb_opt/core.py'),
                               'emb_opt.core.VectorDatabase.query': ('core.html#vectordatabase.query', 'emb_opt/core.py')},
             'emb_opt.imports': {},
-            'emb_opt.utils': {'emb_opt.utils.foo': ('utils.html#foo', 'emb_opt/utils.py')}}}
+            'emb_opt.utils': {'emb_opt.utils.whiten': ('utils.html#whiten', 'emb_opt/utils.py')}}}
