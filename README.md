@@ -38,14 +38,14 @@ vector_database = HFDatabase(my_dataset, embedding_column_name, k)
 
 ``` python
 from emb_opt.backends.qdrant import QdrantDatabase
-vector_database = FaissDatabase(my_qdrant_client, collection_name, k, qdrant_search_params)
+vector_database = QdrantDatabase(my_qdrant_client, collection_name, k, qdrant_search_params)
 ```
 
 ### Chroma
 
 ``` python
 from emb_opt.backends.chroma import ChromaDatabase
-vector_database = FaissDatabase(my_chroma_collection, k, chroma_query_kwargs)
+vector_database = ChromaDatabase(my_chroma_collection, k, chroma_query_kwargs)
 ```
 
 ## Basic Usage
