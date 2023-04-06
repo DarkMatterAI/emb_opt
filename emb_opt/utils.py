@@ -7,17 +7,27 @@ __all__ = ['whiten', 'pack_dataset']
 from .imports import *
 
 # %% ../nbs/00_utils.ipynb 4
-def whiten(scores):
+def whiten(scores: np.ndarray # vector shape (n,) of scores to whiten
+          ) -> np.ndarray: # vector shape (n,) whitened scores
+    'Whitens vector of scores'
     mean = scores.mean()
     var = scores.var()
     
     return (scores - mean) / np.sqrt(var + 1e-8)
 
 # %% ../nbs/00_utils.ipynb 5
-def pack_dataset(dataset: Dataset, 
-                 index_column: str, 
-                 pack_columns: list[str]
-                ):
+def pack_dataset(dataset: Dataset, # input dataset
+                 index_column: str, # name of column to group by
+                 pack_columns: list[str] # columns to include in packing
+                ) -> dict: 
+    '''
+    "packs" values in `pack_columns` by grouping them by the 
+    distinct values in `index_column`
+    
+    returns a dictionary where the keys are the distinct values 
+    in `index_column` and the values are a dictionary mapping 
+    column names in `pack_columns` to the grouped values
+    '''
     output = defaultdict(lambda: defaultdict(list))
     
     for row in dataset:

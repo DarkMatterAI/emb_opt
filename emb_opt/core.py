@@ -6,14 +6,14 @@ __all__ = ['QueryResult', 'dataset_from_query_results', 'Filter', 'PassThroughFi
 # %% ../nbs/01_core.ipynb 3
 from .imports import *
 
-# %% ../nbs/01_core.ipynb 4
+# %% ../nbs/01_core.ipynb 5
 class QueryResult():
     def __init__(self, 
-                 query_idx: int, 
-                 db_idx: int, 
-                 embedding: np.ndarray, 
-                 distance: float, 
-                 data: dict
+                 query_idx: int, # index of query vector
+                 db_idx: int, # index of item in database
+                 embedding: np.ndarray, # item embedding
+                 distance: float, # distance to query vector
+                 data: dict # any associated data
                 ):
         self.query_idx = query_idx
         self.db_idx = db_idx
@@ -30,12 +30,12 @@ class QueryResult():
             'data' : self.data
         }
 
-# %% ../nbs/01_core.ipynb 5
+# %% ../nbs/01_core.ipynb 6
 def dataset_from_query_results(query_results: list[QueryResult]) -> Dataset:
     data_dicts = [i.to_dict() for i in query_results]
     return Dataset.from_list(data_dicts)
 
-# %% ../nbs/01_core.ipynb 7
+# %% ../nbs/01_core.ipynb 8
 class Filter():
     def __init__(self, 
                  filter_func: Callable,
@@ -53,7 +53,7 @@ class PassThroughFilter(Filter):
     def __call__(self, query_dataset: Dataset) -> Dataset:
         return query_dataset
 
-# %% ../nbs/01_core.ipynb 9
+# %% ../nbs/01_core.ipynb 10
 class Score():
     def __init__(self, 
                  score_func: Callable,
@@ -66,7 +66,7 @@ class Score():
         
         return query_dataset.map(lambda item: {'score' : self.score_func(item)}, **self.map_kwargs_dict)
 
-# %% ../nbs/01_core.ipynb 11
+# %% ../nbs/01_core.ipynb 12
 class VectorDatabase():
     def query(self, query_vectors: np.ndarray) -> Dataset:
         raise NotImplementedError
