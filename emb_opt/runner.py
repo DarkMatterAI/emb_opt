@@ -11,6 +11,7 @@ from .query_update import QueryUpdate
 
 # %% ../nbs/07_runner.ipynb 4
 class SearchLog():
+    'Logs results from `Runner`'
     def __init__(self):
         self.batch_log = {}
         
@@ -56,13 +57,14 @@ class SearchLog():
             
         return trajectories
 
-# %% ../nbs/07_runner.ipynb 5
+# %% ../nbs/07_runner.ipynb 6
 class Runner():
+    'Runs embedding optimization search'
     def __init__(self, 
-                 vector_db: VectorDatabase, 
-                 score: Score, 
-                 query_update: QueryUpdate, 
-                 filter: Optional[Filter]=None
+                 vector_db: VectorDatabase, # vector database backend
+                 score: Score, # score function
+                 query_update: QueryUpdate, # query update
+                 filter: Optional[Filter]=None # optional filter
                 ):
         
         self.vector_db = vector_db

@@ -11,12 +11,13 @@ try:
 except:
     warnings.warn('faiss import failed - check if package is installed')
 
-# %% ../../nbs/03_faiss.ipynb 4
+# %% ../../nbs/03_faiss.ipynb 5
 class FaissDatabase(VectorDatabase):
+    'Faiss backend'
     def __init__(self, 
-                 faiss_index: faiss.Index, 
-                 k: int, 
-                 search_params: Optional[faiss.SearchParameters]=None
+                 faiss_index: faiss.Index, # faiss index to query
+                 k: int, # query will return `k` values per query vector
+                 search_params: Optional[faiss.SearchParameters]=None # search params for `faiss_index.search`
                 ):
         
         self.faiss_index = faiss_index

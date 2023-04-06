@@ -7,13 +7,14 @@ __all__ = ['HFDatabase']
 from ..imports import *
 from ..core import QueryResult, VectorDatabase, dataset_from_query_results
 
-# %% ../../nbs/04_huggingface.ipynb 4
+# %% ../../nbs/04_huggingface.ipynb 5
 class HFDatabase(VectorDatabase):
     def __init__(self, 
-                 dataset: Dataset,
-                 index_name: str,
-                 k: int, 
+                 dataset: Dataset, # `Dataset` with built vector index
+                 index_name: str, # name of vector index
+                 k: int, # returns `k` values per query vector
                 ):
+        'Huggingface backend'
         
         self.dataset = dataset
         self.index_name = index_name

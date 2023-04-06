@@ -13,14 +13,14 @@ try:
 except:
     warnings.warn('Failed to import Qdrant client - check package install')
 
-# %% ../../nbs/05_qdrant.ipynb 4
+# %% ../../nbs/05_qdrant.ipynb 5
 class QdrantDatabase(VectorDatabase):
-    
+    'Qdrant backend'
     def __init__(self,
-                 qdrant_client: QdrantClient,
-                 collection_name: str,
-                 k: int,
-                 search_request_kwargs: Optional[dict]=None
+                 qdrant_client: QdrantClient, # qdrant client
+                 collection_name: str, # qdrant collection name
+                 k: int, # return `k` results per query
+                 search_request_kwargs: Optional[dict]=None # kwargs for `SearchRequest`
                 ):
         self.client = qdrant_client
         self.collection_name = collection_name

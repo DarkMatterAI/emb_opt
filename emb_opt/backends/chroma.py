@@ -13,12 +13,13 @@ try:
 except:
     warnings.warn('Failed to import Chroma - check package install')
 
-# %% ../../nbs/06_chroma.ipynb 4
+# %% ../../nbs/06_chroma.ipynb 5
 class ChromaDatabase(VectorDatabase):
+    'Chroma backend'
     def __init__(self, 
-                 chroma_collection: Collection,
-                 k: int,
-                 query_kwargs: Optional[dict]=None
+                 chroma_collection: Collection, # Chroma collection
+                 k: int, # return `k` results per query
+                 query_kwargs: Optional[dict]=None # kwargs for `chroma_collection.query`
                 ):
         self.collection = collection
         self.k = k

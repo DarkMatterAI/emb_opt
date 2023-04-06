@@ -8,6 +8,7 @@ from .imports import *
 
 # %% ../nbs/01_core.ipynb 5
 class QueryResult():
+    'Data model for emb_opt'
     def __init__(self, 
                  query_idx: int, # index of query vector
                  db_idx: int, # index of item in database
@@ -38,6 +39,7 @@ def dataset_from_query_results(query_results: list[QueryResult]) -> Dataset:
 
 # %% ../nbs/01_core.ipynb 9
 class Filter():
+    'Filter query results with `filter_func`'
     def __init__(self, 
                  filter_func: Callable, # function to filter
                  filter_kwargs_dict: Optional[dict]=None # optional kwargs dict passed to `Dataset.filter`
@@ -57,6 +59,7 @@ class PassThroughFilter(Filter):
 
 # %% ../nbs/01_core.ipynb 12
 class Score():
+    'Score query results with `score_func`'
     def __init__(self, 
                  score_func: Callable, # score function to maximize
                  map_kwargs_dict: Optional[dict]=None # optional kwargs for `Dataset.map`
