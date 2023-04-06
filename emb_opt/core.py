@@ -32,14 +32,15 @@ class QueryResult():
 
 # %% ../nbs/01_core.ipynb 6
 def dataset_from_query_results(query_results: list[QueryResult]) -> Dataset:
+    'generates a `Dataset` from a list of `QueryResult`'
     data_dicts = [i.to_dict() for i in query_results]
     return Dataset.from_list(data_dicts)
 
-# %% ../nbs/01_core.ipynb 8
+# %% ../nbs/01_core.ipynb 9
 class Filter():
     def __init__(self, 
-                 filter_func: Callable,
-                 filter_kwargs_dict: Optional[dict]=None
+                 filter_func: Callable, # function to filter
+                 filter_kwargs_dict: Optional[dict]=None # optional kwargs dict passed to `Dataset.filter`
                 ):
         self.filter_func = filter_func
         self.filter_kwargs_dict = filter_kwargs_dict if filter_kwargs_dict else {}
@@ -48,16 +49,17 @@ class Filter():
         return query_dataset.filter(lambda item: self.filter_func(item), **self.filter_kwargs_dict)
     
 class PassThroughFilter(Filter):
+    'Dummy filter'
     def __init__(self):
         pass
     def __call__(self, query_dataset: Dataset) -> Dataset:
         return query_dataset
 
-# %% ../nbs/01_core.ipynb 10
+# %% ../nbs/01_core.ipynb 12
 class Score():
     def __init__(self, 
-                 score_func: Callable,
-                 map_kwargs_dict: Optional[dict]=None
+                 score_func: Callable, # score function to maximize
+                 map_kwargs_dict: Optional[dict]=None # optional kwargs for `Dataset.map`
                 ):
         self.score_func = score_func
         self.map_kwargs_dict = map_kwargs_dict if map_kwargs_dict else {}
@@ -66,7 +68,8 @@ class Score():
         
         return query_dataset.map(lambda item: {'score' : self.score_func(item)}, **self.map_kwargs_dict)
 
-# %% ../nbs/01_core.ipynb 12
+# %% ../nbs/01_core.ipynb 14
 class VectorDatabase():
+    'Base class for vector database backends'
     def query(self, query_vectors: np.ndarray) -> Dataset:
         raise NotImplementedError
