@@ -30,7 +30,7 @@ class QdrantDatabase(VectorDatabase):
     def query(self, query_vectors: np.ndarray) -> Dataset:
         
         search_queries = [
-                models.SearchRequest(vector=list(i), 
+                models.SearchRequest(vector=i.tolist(), 
                                      limit=self.k, 
                                      with_payload=True, 
                                      with_vector=True,
