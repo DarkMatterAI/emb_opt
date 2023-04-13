@@ -35,11 +35,17 @@ class RLUpdate(QueryUpdate):
         grads = []
         
         for query_idx in range(query_vectors.shape[0]):
-            embs = np.array(packed_dict[query_idx]['embedding'])
-            scores = np.array(packed_dict[query_idx]['score'])
+            if len(packed_dict[query_idx]['score'])>0:
+                embs = np.array(packed_dict[query_idx]['embedding'])
+                scores = np.array(packed_dict[query_idx]['score'])
 
-            advantages = whiten(scores)
-            grad = (advantages[:,None] * (2*(query_vectors[query_idx][None] - embs))).mean(0)
+                advantages = whiten(scores)
+                grad = (advantages[:,None] * (2*(query_vectors[query_idx][None] - embs))).mean(0)
+                
+            else:
+                # case where no results returned for vector
+                grad = np.zeros(query_vectors[query_idx].shape)
+                
             grads.append(grad)
 
         grads = np.array(grads)
@@ -65,17 +71,20 @@ class TopKUpdate(QueryUpdate):
         new_queries = []
         
         for query_idx in range(query_vectors.shape[0]):
-            embs = np.array(packed_dict[query_idx]['embedding'])
-            scores = np.array(packed_dict[query_idx]['score'])
+            if len(packed_dict[query_idx]['score'])>0:
+                embs = np.array(packed_dict[query_idx]['embedding'])
+                scores = np.array(packed_dict[query_idx]['score'])
 
-            topk_idxs = scores.argsort()[::-1][:self.k]
-            topk_embs = embs[topk_idxs]
-            topk_scores = scores[topk_idxs]
+                topk_idxs = scores.argsort()[::-1][:self.k]
+                topk_embs = embs[topk_idxs]
+                topk_scores = scores[topk_idxs]
 
-            if self.score_weighting:
-                new_queries.append(np.average(topk_embs, 0, weights=topk_scores))
+                if self.score_weighting:
+                    new_queries.append(np.average(topk_embs, 0, weights=topk_scores))
+                else:
+                    new_queries.append(np.average(topk_embs, 0))
             else:
-                new_queries.append(np.average(topk_embs, 0))
+                new_queries.append(query_vectors[query_idx])
 
         query_vectors = np.array(new_queries)
         
