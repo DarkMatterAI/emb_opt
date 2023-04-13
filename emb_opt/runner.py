@@ -9,6 +9,9 @@ from .utils import pack_dataset
 from .core import VectorDatabase, Score, Filter, PassThroughFilter
 from .query_update import QueryUpdate
 
+from .backends.hf import HFDatabase
+from .query_update import RLUpdate
+
 # %% ../nbs/07_runner.ipynb 4
 class SearchLog():
     'Logs results from `Runner`'
@@ -72,6 +75,17 @@ class Runner():
         self.query_update = query_update
         self.filter = filter if filter else PassThroughFilter()
         
+    def step(self, iteration, query_vectors, log=None):
+        query_results = self.vector_db.query(query_vectors)
+        query_results = self.filter(query_results)
+        query_results = self.score(query_results)
+
+        if log:
+            log.add_entry(iteration, query_vectors, query_results)
+
+        query_vectors = self.query_update(query_vectors, query_results)
+        return query_vectors
+        
     def search(self, 
                query_vectors: np.ndarray, 
                iterations: int
@@ -79,12 +93,6 @@ class Runner():
         log = SearchLog()
         
         for i in range(iterations):
-            query_results = self.vector_db.query(query_vectors)
-            query_results = self.filter(query_results)
-            query_results = self.score(query_results)
-            
-            log.add_entry(i, query_vectors, query_results)
-            
-            query_vectors = self.query_update(query_vectors, query_results)
+            query_vectors = self.step(i, query_vectors, log)
             
         return log
