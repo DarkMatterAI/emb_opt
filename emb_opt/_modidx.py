@@ -66,5 +66,6 @@ d = { 'settings': { 'branch': 'main',
                                 'emb_opt.runner.SearchLog.compile_results': ('runner.html#searchlog.compile_results', 'emb_opt/runner.py'),
                                 'emb_opt.runner.SearchLog.compile_trajectories': ( 'runner.html#searchlog.compile_trajectories',
                                                                                    'emb_opt/runner.py')},
-            'emb_opt.utils': { 'emb_opt.utils.pack_dataset': ('utils.html#pack_dataset', 'emb_opt/utils.py'),
+            'emb_opt.utils': { 'emb_opt.utils.pack_dataframe': ('utils.html#pack_dataframe', 'emb_opt/utils.py'),
+                               'emb_opt.utils.pack_dataset': ('utils.html#pack_dataset', 'emb_opt/utils.py'),
                                'emb_opt.utils.whiten': ('utils.html#whiten', 'emb_opt/utils.py')}}}

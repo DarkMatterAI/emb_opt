@@ -5,7 +5,7 @@ __all__ = ['SearchLog', 'Runner']
 
 # %% ../nbs/07_runner.ipynb 3
 from .imports import *
-from .utils import pack_dataset
+from .utils import pack_dataframe
 from .core import VectorDatabase, Score, Filter, PassThroughFilter
 from .query_update import QueryUpdate
 
@@ -40,7 +40,9 @@ class SearchLog():
                     results.append(row)
                     seen_keys.update({row['db_idx']})
 
-        return Dataset.from_list(results)
+        output = Dataset.from_list(results)
+        output = output.sort('score', reverse=True)
+        return output
     
     def compile_trajectories(self) -> dict:
         
@@ -50,7 +52,7 @@ class SearchLog():
         
         for iteration in range(n_iters):
             queries = self.batch_log[iteration]['queries']
-            score_dict = pack_dataset(self.batch_log[iteration]['results'], 'query_idx', ['score'])
+            score_dict = pack_dataframe(self.batch_log[iteration]['results'], 'query_idx', ['score'])
             
             for query_idx in range(n_queries):
                 trajectories[query_idx]['query_vectors'].append(queries[query_idx])
