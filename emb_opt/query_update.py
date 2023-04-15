@@ -22,9 +22,11 @@ class QueryUpdate():
 class RLUpdate(QueryUpdate):
     'Reinforcement Learning update'
     def __init__(self, 
-                 lr: float # learning rate
+                 lr: float, # learning rate
+                 distance_penalty: float=0.0 # query distance penalty
                 ):
         self.lr = lr
+        self.distance_penalty = distance_penalty
         
     def __call__(self, 
                  query_vectors: np.ndarray, # query vectors
@@ -42,6 +44,12 @@ class RLUpdate(QueryUpdate):
                 advantages = whiten(scores)
                 grad = (advantages[:,None] * (2*(query_vectors[query_idx][None] - embs))).mean(0)
                 
+                if self.distance_penalty>0.:
+                    avg_emb = embs.mean(0)
+                    distance_grad = 2*(query_vectors[query_idx] - avg_emb)
+                    grad += distance_grad
+                
+                
             else:
                 # case where no results returned for vector
                 grad = np.zeros(query_vectors[query_idx].shape)
@@ -52,7 +60,7 @@ class RLUpdate(QueryUpdate):
         updated_query_vectors = query_vectors - self.lr*grads
         return updated_query_vectors
 
-# %% ../nbs/02_query_update.ipynb 10
+# %% ../nbs/02_query_update.ipynb 11
 class TopKUpdate(QueryUpdate):
     'Top K update'
     def __init__(self, 
