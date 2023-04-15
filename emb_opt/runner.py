@@ -32,7 +32,8 @@ class SearchLog():
         for k,v in self.batch_log.items():
             query_results = v['results']
 
-            for row in query_results.to_list():
+            for idx, row in query_results.iterrows():
+                row = dict(row)
                 if not (row['db_idx'] in seen_keys):
                     row.pop('query_idx')
                     row.pop('distance')
