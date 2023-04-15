@@ -5,7 +5,6 @@ __all__ = ['whiten', 'pack_dataset', 'pack_dataframe']
 
 # %% ../nbs/00_utils.ipynb 3
 from .imports import *
-import pandas as pd
 
 # %% ../nbs/00_utils.ipynb 4
 def whiten(scores: np.ndarray # vector shape (n,) of scores to whiten

@@ -39,10 +39,14 @@ class SearchLog():
                     row.pop('distance')
                     results.append(row)
                     seen_keys.update({row['db_idx']})
-
-        output = Dataset.from_list(results)
-        output = output.sort('score', reverse=True)
+                    
+        output = pd.DataFrame(results)
+        output = output.sort_values('score', ascending=False)
         return output
+
+#         output = Dataset.from_list(results)
+#         output = output.sort('score', reverse=True)
+#         return output
     
     def compile_trajectories(self) -> dict:
         
