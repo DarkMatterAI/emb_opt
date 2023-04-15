@@ -23,7 +23,7 @@ class SearchLog():
                   query_vectors: np.ndarray, 
                   query_results: Dataset
                  ):
-        self.batch_log[iteration] = {'queries' : query_vectors, 'results' : query_results}
+        self.batch_log[iteration] = {'queries' : query_vectors, 'results' : query_results.to_pandas()}
         
     def compile_results(self) -> Dataset:
         results = []
