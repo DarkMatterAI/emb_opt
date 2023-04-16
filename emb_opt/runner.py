@@ -42,11 +42,8 @@ class SearchLog():
                     
         output = pd.DataFrame(results)
         output = output.sort_values('score', ascending=False)
+        output = output.reset_index(drop=True)
         return output
-
-#         output = Dataset.from_list(results)
-#         output = output.sort('score', reverse=True)
-#         return output
     
     def compile_trajectories(self) -> dict:
         
