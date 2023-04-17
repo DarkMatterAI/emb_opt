@@ -5,7 +5,7 @@ __all__ = ['QueryUpdate', 'RLUpdate', 'TopKUpdate']
 
 # %% ../nbs/02_query_update.ipynb 3
 from .imports import *
-from .utils import pack_dataset, whiten
+from .utils import pack_dataset, compute_rl_grad
 from .backends.hf import HFDatabase
 from .core import Score
 
@@ -22,31 +22,27 @@ class QueryUpdate():
 class RLUpdate(QueryUpdate):
     'Reinforcement Learning update'
     def __init__(self, 
-                 lr: float # learning rate
+                 lr: float, # learning rate
+                 distance_penalty: float=0.0, # query distance penalty
+                 scale_distance_penalty: bool=True # if True, penalty = penalty/LR (removed LR bias on penalty)
                 ):
         self.lr = lr
+        self.distance_penalty = distance_penalty
+        
+        if scale_distance_penalty:
+            self.distance_penalty = self.distance_penalty/self.lr
         
     def __call__(self, 
                  query_vectors: np.ndarray, # query vectors
                  query_dataset: Dataset # scored dataset
                 ) -> np.ndarray: # new query vectors
         
-        packed_dict = pack_dataset(query_dataset, 'query_idx', ['embedding', 'score'])
-        grads = []
-        
-        for query_idx in range(query_vectors.shape[0]):
-            embs = np.array(packed_dict[query_idx]['embedding'])
-            scores = np.array(packed_dict[query_idx]['score'])
+        grads = compute_rl_grad(query_vectors, query_dataset, self.distance_penalty)
 
-            advantages = whiten(scores)
-            grad = (advantages[:,None] * (2*(query_vectors[query_idx][None] - embs))).mean(0)
-            grads.append(grad)
-
-        grads = np.array(grads)
         updated_query_vectors = query_vectors - self.lr*grads
         return updated_query_vectors
 
-# %% ../nbs/02_query_update.ipynb 10
+# %% ../nbs/02_query_update.ipynb 11
 class TopKUpdate(QueryUpdate):
     'Top K update'
     def __init__(self, 
@@ -65,17 +61,20 @@ class TopKUpdate(QueryUpdate):
         new_queries = []
         
         for query_idx in range(query_vectors.shape[0]):
-            embs = np.array(packed_dict[query_idx]['embedding'])
-            scores = np.array(packed_dict[query_idx]['score'])
+            if len(packed_dict[query_idx]['score'])>0:
+                embs = np.array(packed_dict[query_idx]['embedding'])
+                scores = np.array(packed_dict[query_idx]['score'])
 
-            topk_idxs = scores.argsort()[::-1][:self.k]
-            topk_embs = embs[topk_idxs]
-            topk_scores = scores[topk_idxs]
+                topk_idxs = scores.argsort()[::-1][:self.k]
+                topk_embs = embs[topk_idxs]
+                topk_scores = scores[topk_idxs]
 
-            if self.score_weighting:
-                new_queries.append(np.average(topk_embs, 0, weights=topk_scores))
+                if self.score_weighting:
+                    new_queries.append(np.average(topk_embs, 0, weights=topk_scores))
+                else:
+                    new_queries.append(np.average(topk_embs, 0))
             else:
-                new_queries.append(np.average(topk_embs, 0))
+                new_queries.append(query_vectors[query_idx])
 
         query_vectors = np.array(new_queries)
         

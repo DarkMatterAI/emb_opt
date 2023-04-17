@@ -5,9 +5,12 @@ __all__ = ['SearchLog', 'Runner']
 
 # %% ../nbs/07_runner.ipynb 3
 from .imports import *
-from .utils import pack_dataset
+from .utils import pack_dataframe
 from .core import VectorDatabase, Score, Filter, PassThroughFilter
 from .query_update import QueryUpdate
+
+from .backends.hf import HFDatabase
+from .query_update import RLUpdate
 
 # %% ../nbs/07_runner.ipynb 4
 class SearchLog():
@@ -20,7 +23,7 @@ class SearchLog():
                   query_vectors: np.ndarray, 
                   query_results: Dataset
                  ):
-        self.batch_log[iteration] = {'queries' : query_vectors, 'results' : query_results}
+        self.batch_log[iteration] = {'queries' : query_vectors, 'results' : query_results.to_pandas()}
         
     def compile_results(self) -> Dataset:
         results = []
@@ -29,14 +32,18 @@ class SearchLog():
         for k,v in self.batch_log.items():
             query_results = v['results']
 
-            for row in query_results.to_list():
+            for idx, row in query_results.iterrows():
+                row = dict(row)
                 if not (row['db_idx'] in seen_keys):
                     row.pop('query_idx')
                     row.pop('distance')
                     results.append(row)
                     seen_keys.update({row['db_idx']})
-
-        return Dataset.from_list(results)
+                    
+        output = pd.DataFrame(results)
+        output = output.sort_values('score', ascending=False)
+        output = output.reset_index(drop=True)
+        return output
     
     def compile_trajectories(self) -> dict:
         
@@ -46,7 +53,7 @@ class SearchLog():
         
         for iteration in range(n_iters):
             queries = self.batch_log[iteration]['queries']
-            score_dict = pack_dataset(self.batch_log[iteration]['results'], 'query_idx', ['score'])
+            score_dict = pack_dataframe(self.batch_log[iteration]['results'], 'query_idx', ['score'])
             
             for query_idx in range(n_queries):
                 trajectories[query_idx]['query_vectors'].append(queries[query_idx])
@@ -72,6 +79,17 @@ class Runner():
         self.query_update = query_update
         self.filter = filter if filter else PassThroughFilter()
         
+    def step(self, iteration, query_vectors, log=None):
+        query_results = self.vector_db.query(query_vectors)
+        query_results = self.filter(query_results)
+        query_results = self.score(query_results)
+
+        if log:
+            log.add_entry(iteration, query_vectors, query_results)
+
+        query_vectors = self.query_update(query_vectors, query_results)
+        return query_vectors
+        
     def search(self, 
                query_vectors: np.ndarray, 
                iterations: int
@@ -79,12 +97,6 @@ class Runner():
         log = SearchLog()
         
         for i in range(iterations):
-            query_results = self.vector_db.query(query_vectors)
-            query_results = self.filter(query_results)
-            query_results = self.score(query_results)
-            
-            log.add_entry(i, query_vectors, query_results)
-            
-            query_vectors = self.query_update(query_vectors, query_results)
+            query_vectors = self.step(i, query_vectors, log)
             
         return log
