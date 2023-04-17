@@ -42,47 +42,6 @@ class RLUpdate(QueryUpdate):
         updated_query_vectors = query_vectors - self.lr*grads
         return updated_query_vectors
 
-# class RLUpdate(QueryUpdate):
-#     'Reinforcement Learning update'
-#     def __init__(self, 
-#                  lr: float, # learning rate
-#                  distance_penalty: float=0.0 # query distance penalty
-#                 ):
-#         self.lr = lr
-#         self.distance_penalty = distance_penalty
-        
-#     def __call__(self, 
-#                  query_vectors: np.ndarray, # query vectors
-#                  query_dataset: Dataset # scored dataset
-#                 ) -> np.ndarray: # new query vectors
-        
-#         packed_dict = pack_dataset(query_dataset, 'query_idx', ['embedding', 'score'])
-#         grads = []
-#         mean_embs = []
-        
-#         for query_idx in range(query_vectors.shape[0]):
-#             if len(packed_dict[query_idx]['score'])>0:
-#                 embs = np.array(packed_dict[query_idx]['embedding'])
-#                 scores = np.array(packed_dict[query_idx]['score'])
-
-#                 advantages = whiten(scores)
-#                 grad = (advantages[:,None] * (2*(query_vectors[query_idx][None] - embs))).mean(0)
-                
-#                 mean_embs.append(2*(query_vectors[query_idx] - embs.mean(0)))
-                
-#             else:
-#                 # case where no results returned for vector
-#                 grad = np.zeros(query_vectors[query_idx].shape)
-#                 mean_embs.append(np.zeros(query_vectors[query_idx].shape))
-                
-#             grads.append(grad)
-
-#         grads = np.array(grads)
-#         mean_embs = np.array(mean_embs)
-#         updated_query_vectors = query_vectors - self.lr*(grads + self.distance_penalty*mean_embs)
-# #         updated_query_vectors = query_vectors - self.lr*grads - self.distance_penalty*mean_embs
-#         return updated_query_vectors
-
 # %% ../nbs/02_query_update.ipynb 11
 class TopKUpdate(QueryUpdate):
     'Top K update'
