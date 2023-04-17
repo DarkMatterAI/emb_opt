@@ -1,0 +1,212 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "emb_opt",
+    "section": "",
+    "text": "emb_opt uses reinforcement learning to efficiently find items in a vector database that maximize some score_function\nSee the documentation site for documentation and tutorials"
+  },
+  {
+    "objectID": "index.html#install",
+    "href": "index.html#install",
+    "title": "emb_opt",
+    "section": "Install",
+    "text": "Install\npip install emb_opt"
+  },
+  {
+    "objectID": "index.html#supported-backends",
+    "href": "index.html#supported-backends",
+    "title": "emb_opt",
+    "section": "Supported Backends",
+    "text": "Supported Backends\nThe following vector databases are supported\n\nFAISS\nfrom emb_opt.backends.faiss import FaissDatabase\nvector_database = FaissDatabase(my_faiss_index, k, faiss_search_params)\n\n\nHuggingface Datasets\nfrom emb_opt.backends.hf import HFDatabase\nmy_dataset.add_faiss_index(embedding_column_name)\nvector_database = HFDatabase(my_dataset, embedding_column_name, k)\n\n\nQdrant\nfrom emb_opt.backends.qdrant import QdrantDatabase\nvector_database = QdrantDatabase(my_qdrant_client, collection_name, k, qdrant_search_params)\n\n\nChroma\nfrom emb_opt.backends.chroma import ChromaDatabase\nvector_database = ChromaDatabase(my_chroma_collection, k, chroma_query_kwargs)"
+  },
+  {
+    "objectID": "index.html#basic-usage",
+    "href": "index.html#basic-usage",
+    "title": "emb_opt",
+    "section": "Basic Usage",
+    "text": "Basic Usage\nFor more detail on the API, see the basic tutorial\nfrom emb_opt.core import Score\nfrom emb_opt.runner import Runner\nfrom emb_opt.query_update import RLUpdate\n\nscore = Score(my_score_function)\nquery_update = RLUpdate(lr=0.5)\nrunner = Runner(vector_database, score, query_update)\n\ninit_query_vectors = ... # any function to initalize query vectors\niterations = 15\n\nresults_log = runner.search(init_query_vectors, iterations)"
+  },
+  {
+    "objectID": "runner.html",
+    "href": "runner.html",
+    "title": "runner",
+    "section": "",
+    "text": "source"
+  },
+  {
+    "objectID": "runner.html#runner",
+    "href": "runner.html#runner",
+    "title": "runner",
+    "section": "Runner",
+    "text": "Runner\nThe Runner class combines a VectorDatabase, a Score, a QueryUpdate and a Filter to search a vector database for high scoring items. The search loop:\n\n\nStart with query_vectors\n\n\nQuery VectorDatabase with query_vectors to get query_results\n\n\nFilter query_results with Filter\n\n\nScore query_results with Score\n\n\nUse QueryUpdate to generate a new set of query_vectors\n\n\n\nsource\n\nRunner\n\n Runner (vector_db:emb_opt.core.VectorDatabase, score:emb_opt.core.Score,\n         query_update:emb_opt.query_update.QueryUpdate,\n         filter:Optional[emb_opt.core.Filter]=None)\n\nRuns embedding optimization search\n\n\n\n\n\n\n\n\n\n\nType\nDefault\nDetails\n\n\n\n\nvector_db\nVectorDatabase\n\nvector database backend\n\n\nscore\nScore\n\nscore function\n\n\nquery_update\nQueryUpdate\n\nquery update\n\n\nfilter\ntyping.Optional[emb_opt.core.Filter]\nNone\noptional filter\n\n\n\n\ndef dummy_score(row):\n    return np.linalg.norm(row['embedding'])\n\nvectors = np.random.randn(128, 256)\nvector_dataset = Dataset.from_list([{'embedding' : i} for i in vectors])\nvector_dataset.add_faiss_index('embedding')\n\ndb = HFDatabase(vector_dataset, 'embedding', 10)\nscore = Score(dummy_score)\nupdate_strategy = RLUpdate(0.5)\n\nrunner = Runner(db, score, update_strategy)\n\nquery_vectors = np.random.randn(4, 256)/10\nlog = runner.search(query_vectors, 5)\n\nres = log.compile_results()\ntraj = log.compile_trajectories()\n\nlog = SearchLog()\n_ = runner.step(0, query_vectors)\n_ = runner.step(0, query_vectors, log)\n\n100%|████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 2007.80it/s]"
+  },
+  {
+    "objectID": "core.html",
+    "href": "core.html",
+    "title": "core",
+    "section": "",
+    "text": "The QueryResult serves as a data model to define the data required to integrate with the library. To integrate a new backend, you only need to figure out how to hook the returned information into the QueryResult class.\n\nquery_idx - query vectors are passed as a numpy array of size (n, vector_size). This value corresponds to the index of the query vector that generated the specific result\ndb_idx - index value from the database\nembedding - the embedding of the item\ndistance - the distance from the query vector to the embedding\ndata - a dictionary of any other values you want to track\n\nFor more examples, see HFDatabase, FaissDatabase, QdrantDatabase or ChromaDatabase\n\nsource\n\n\n\n QueryResult (query_idx:int, db_idx:int, embedding:numpy.ndarray,\n              distance:float, data:dict)\n\nData model for emb_opt\n\n\n\n\nType\nDetails\n\n\n\n\nquery_idx\nint\nindex of query vector\n\n\ndb_idx\nint\nindex of item in database\n\n\nembedding\nndarray\nitem embedding\n\n\ndistance\nfloat\ndistance to query vector\n\n\ndata\ndict\nany associated data\n\n\n\n\nsource\n\n\n\n\n dataset_from_query_results (query_results:list[__main__.QueryResult])\n\ngenerates a Dataset from a list of QueryResult\n\nquery_vecs = np.random.randn(2, 256)\n\nvector_database = np.random.randn(64, 256)\n\ntopk = 24\n\ndists = ((query_vecs[:,None] - vector_database[None])**2).sum(-1)**0.5\nnearest = dists.argsort(-1)[:, -topk:]\n\nquery_results = []\n\nfor query_idx in range(query_vecs.shape[0]):\n    for db_idx in nearest[query_idx]:\n        result = QueryResult(query_idx, db_idx, vector_database[db_idx], \n                             dists[query_idx, db_idx], {'randint': np.random.randint(0,100)})\n        query_results.append(result)\n        \nquery_dataset = dataset_from_query_results(query_results)"
+  },
+  {
+    "objectID": "core.html#filter",
+    "href": "core.html#filter",
+    "title": "core",
+    "section": "Filter",
+    "text": "Filter\nThe Filter class allows query results to be filtered by some function. See the Huggingface Filter documentation for examples of filter functions and optional arguments.\n\nsource\n\nPassThroughFilter\n\n PassThroughFilter ()\n\nDummy filter\n\nsource\n\n\nFilter\n\n Filter (filter_func:Callable, filter_kwargs_dict:Optional[dict]=None)\n\nFilter query results with filter_func\n\n\n\n\n\n\n\n\n\n\nType\nDefault\nDetails\n\n\n\n\nfilter_func\ntyping.Callable\n\nfunction to filter\n\n\nfilter_kwargs_dict\ntyping.Optional[dict]\nNone\noptional kwargs dict passed to Dataset.filter\n\n\n\n\ndef simple_filter(row):\n    return row['data']['randint'] < 20\n\n# basic filtering\nf = Filter(simple_filter)\nfiltered_dataset = f(query_dataset)\nassert len(filtered_dataset) < len(query_dataset)\n\n# multiprocess\nf = Filter(simple_filter, {'num_proc':2})\nfiltered_dataset = f(query_dataset)\nassert len(filtered_dataset) < len(query_dataset)\n\n# batched\ndef batched_filter(batch):\n    randints = np.array([i['randint'] for i in batch['data']])\n    return randints < 20\n\nf = Filter(batched_filter, {'batched':True})\nfiltered_dataset = f(query_dataset)\nassert len(filtered_dataset) < len(query_dataset)\n\n# dummy\nf = PassThroughFilter()\nfiltered_dataset = f(query_dataset)\nassert len(filtered_dataset) == len(query_dataset)"
+  },
+  {
+    "objectID": "core.html#score",
+    "href": "core.html#score",
+    "title": "core",
+    "section": "Score",
+    "text": "Score\nThe Score class holds the score function we want to maximize. The score function will be given all the information in QueryResult. See Huggingface Map Documentation for available kwargs.\n\nsource\n\nScore\n\n Score (score_func:Callable, map_kwargs_dict:Optional[dict]=None)\n\nScore query results with score_func\n\n\n\n\n\n\n\n\n\n\nType\nDefault\nDetails\n\n\n\n\nscore_func\ntyping.Callable\n\nscore function to maximize\n\n\nmap_kwargs_dict\ntyping.Optional[dict]\nNone\noptional kwargs for Dataset.map\n\n\n\n\ndef simple_score(row):\n    return np.random.randn()\n\nscore = Score(simple_score)\nscored_dataset = score(query_dataset)\n\n# multiprocess\nscore = Score(simple_score, {'num_proc' : 2})\nscored_dataset = score(query_dataset)\n\n# batched\ndef batch_score(batch):\n    return np.arange(len(batch['query_idx']))\n\nscore = Score(batch_score, {'batched' : True})\nscored_dataset = score(query_dataset)"
+  },
+  {
+    "objectID": "core.html#vector-database",
+    "href": "core.html#vector-database",
+    "title": "core",
+    "section": "Vector Database",
+    "text": "Vector Database\nBase class for integrating vector database queries. See the versions in backends for examples\n\nsource\n\nVectorDatabase\n\n VectorDatabase ()\n\nBase class for vector database backends\n\nsource\n\n\nGradQueryDB\n\n GradQueryDB (vector_db:__main__.VectorDatabase, grad_func:Callable,\n              grad_scales:numpy.ndarray)\n\nGradQueryDB - uses a gradient provided by grad_func and grad_scales to query along an arc defined by query[i,j] = query_vectors[i] - (grads[i]*grad_scales[j])\n\n\n\n\nType\nDetails\n\n\n\n\nvector_db\nVectorDatabase\nDatabase to query\n\n\ngrad_func\ntyping.Callable\nfunction to compute grads\n\n\ngrad_scales\nndarray\narray of grad scales"
+  },
+  {
+    "objectID": "faiss.html",
+    "href": "faiss.html",
+    "title": "faiss",
+    "section": "",
+    "text": "FaissDatabase integrates with a faiss index.\nsearch_params can be any params object compatible with faiss search\n\nsource\n\n\n\n FaissDatabase (faiss_index:faiss.swigfaiss_avx2.Index, k:int,\n                search_params:Optional[faiss.swigfaiss_avx2.SearchParamete\n                rs]=None)\n\nFaiss backend\n\n\n\n\n\n\n\n\n\n\nType\nDefault\nDetails\n\n\n\n\nfaiss_index\nIndex\n\nfaiss index to query\n\n\nk\nint\n\nquery will return k values per query vector\n\n\nsearch_params\ntyping.Optional[faiss.swigfaiss_avx2.SearchParameters]\nNone\nsearch params for faiss_index.search\n\n\n\n\nvectors = np.random.randn(64, 256)\nindex = faiss.IndexFlatL2(256)\nindex.add(vectors)\nfaiss_db = FaissDatabase(index, 5)\n\nquery_vecs = np.random.randn(2, 256)\n\nquery_dataset = faiss_db.query(query_vecs)"
+  },
+  {
+    "objectID": "tutorials/basic_example.html",
+    "href": "tutorials/basic_example.html",
+    "title": "Basic Tutorial",
+    "section": "",
+    "text": "The goal of emb_opt is to find high scoring items (defined by some score function) in a vector database without exhaustive screening of the database itself.\nemb_opt takes advantage of the inherent structure present in embedding spaces. Starting with random points, we can use reinforcement learning to traverse the vector space to move from low scoring items to high scoring items.\nThis notebook gives an overview of the main abstractions in emb_opt and how they fit together.\n\nfrom emb_opt.imports import *\nfrom emb_opt.core import Filter, Score\nfrom emb_opt.backends.hf import HFDatabase\nfrom emb_opt.query_update import RLUpdate\nfrom emb_opt.runner import Runner\nimport matplotlib.pyplot as plt\n\n/home/dmai/miniconda3/envs/emb_opt/lib/python3.9/site-packages/tqdm/auto.py:21: TqdmWarning: IProgress not found. Please update jupyter and ipywidgets. See https://ipywidgets.readthedocs.io/en/stable/user_install.html\n  from .autonotebook import tqdm as notebook_tqdm"
+  },
+  {
+    "objectID": "tutorials/basic_example.html#setup",
+    "href": "tutorials/basic_example.html#setup",
+    "title": "Basic Tutorial",
+    "section": "Setup",
+    "text": "Setup\nFirst we need a vector database to query. Since this is just an example notebook, we will work off a set of random vectors.\nWe will use the Datasets library to hold our vectors and build our index.\nIn addition to the embedding vector, we will also add a rand column of random values. This will be used later to demonstrate the Filter functionality.\n\nn_vectors = 10000\nsize = 128\n\nvectors = np.random.randn(n_vectors, size)\nvector_dataset = Dataset.from_list([{'embedding':i, 'rand':np.random.rand()} for i in vectors])\nvector_dataset.add_faiss_index('embedding')\n\n100%|██████████████████████████████████████████| 10/10 [00:00<00:00, 908.13it/s]\n\n\nDataset({\n    features: ['embedding', 'rand'],\n    num_rows: 10000\n})"
+  },
+  {
+    "objectID": "tutorials/basic_example.html#database-backend",
+    "href": "tutorials/basic_example.html#database-backend",
+    "title": "Basic Tutorial",
+    "section": "Database Backend",
+    "text": "Database Backend\nemb_opt has a standardized way of returning results from a vector database query. Since we are using a Huggingface Dataset for our index, we will use the corresponding HFDatabase backend.\nemb_opt currently supports faiss, Qdrant, Chroma, and Huggingface Datasets as backends.\nWe will pass k=10 to return 10 items per query\n\nk = 10\nindex_name = 'embedding'\nhf_db = HFDatabase(vector_dataset, index_name, k)\n\n\nQuery API\nQueries are sent as a numpy array of vectors. Query results are returned as a Dataset with the following columns:\n\nquery_idx - the index of the specific query vector that returned a particular row\ndb_idx - the database index of the item returned\nembedding - the embedding of the item returned\ndistance - distance between the embedding and the query vector defined by query_idx\ndata - a dictionary of any other information returned with the query\n\n\nexample_query = np.random.randn(3, size)\nquery_results = hf_db.query(example_query)\nquery_results\n\nDataset({\n    features: ['query_idx', 'db_idx', 'embedding', 'distance', 'data'],\n    num_rows: 30\n})\n\n\nNote that the rand column we created earlier ends up in the data column of the query results\n\nquery_results['data'][0]\n\n{'rand': 0.18091041183937884}"
+  },
+  {
+    "objectID": "tutorials/basic_example.html#score-function",
+    "href": "tutorials/basic_example.html#score-function",
+    "title": "Basic Tutorial",
+    "section": "Score Function",
+    "text": "Score Function\nThis is the score function we want to maximize. Any function that takes in a row from the query_results dataset and returns a single numeric value where “larger = better” can be used.\nFor a simple example, we will use the sum of our embedding vector as the score\n\ndef simple_score(row):\n    return sum(row['embedding'])\n\nmap_kwargs = {}\nscore_function = Score(simple_score, map_kwargs)\n\n\nScore Kwargs\nIn the example above, we passed map_kwargs = {} to the score function. Behind the scenes, the score is actually computed using Dataset.map\nquery_dataset.map(lambda item: {'score' : score_func(item)}, **map_kwargs)\nThis allows us to do this like:\n# multiprocessing\nmap_kwargs = {'num_proc' : 5}\nscore_function = Score(simple_score, map_kwargs)\n# batched compute\nmap_kwargs = {'batched' : True}\nscore_function = Score(simple_score, map_kwargs)\nCheck the Huggingface Map Documentation for a full set of applicable kwargs."
+  },
+  {
+    "objectID": "tutorials/basic_example.html#filter-function",
+    "href": "tutorials/basic_example.html#filter-function",
+    "title": "Basic Tutorial",
+    "section": "Filter Function",
+    "text": "Filter Function\nFor some applications we may wish to filter query results before scoring.\nSome database backends allow for various types of filtering - see FaissDatabase, QdrantDatabase and ChromaDatabase for backend-specific examples.\nHowever, we may wish to filter on things that are not “built in” to our backend, such as the results from a classification model or a metric that is more efficient to compute on the fly rather than pre-computing for the entire database.\nThe Filter class offers this functionality. We can filter query results on any function that returns a boolean value for each row in the query_results dataset.\nFor a simple example, we will use the rand column we created earlier and filter any example where rand>=0.9.\nNote the format of the filter function. The rand column (and any other information returned with our query) will be in a dictionary stored in the data column of the query_results dataset.\n\ndef simple_filter(row):\n    return row['data']['rand'] < 0.9\n\nfilter_kwargs = {}\nfilter_function = Filter(simple_filter, filter_kwargs)\n\n\nFilter Kwargs\nSimilar to the score function, filtering is implemented via Dataset.filter. You can pass any kwargs for Dataset.filter to Filter.\nquery_dataset.filter(lambda item: filter_func(item), **filter_kwargs)\nSee the Huggingface Filter documentation"
+  },
+  {
+    "objectID": "tutorials/basic_example.html#query-update",
+    "href": "tutorials/basic_example.html#query-update",
+    "title": "Basic Tutorial",
+    "section": "Query Update",
+    "text": "Query Update\nA QueryUpdate takes a set of query_vectors, a dataset of query_results and uses them to generate the next iteration of query_vectors\nWe will use the RLUpdate class to use reinforcement learning to iteratively move query_vectors from low scoring locations to high scoring locations\n\nquery_update = RLUpdate(lr=5.)"
+  },
+  {
+    "objectID": "tutorials/basic_example.html#runner",
+    "href": "tutorials/basic_example.html#runner",
+    "title": "Basic Tutorial",
+    "section": "Runner",
+    "text": "Runner\nThe Runner collects the pieces we have created so far and runs the actual optimization process.\nThe core optimization loop:\nfor i in range(iterations):\n    query_results = self.vector_db.query(query_vectors) # get results\n    query_results = self.filter(query_results) # filter results\n    query_results = self.score(query_results) # score results\n\n    log.add_entry(i, query_vectors, query_results) # log results\n\n    query_vectors = self.query_update(query_vectors, query_results) # update query vectors\n\nreturn log\n\n# note that using a Filter is optional\nrunner = Runner(hf_db, score_function, query_update, filter_function)"
+  },
+  {
+    "objectID": "tutorials/basic_example.html#execute-search",
+    "href": "tutorials/basic_example.html#execute-search",
+    "title": "Basic Tutorial",
+    "section": "Execute Search",
+    "text": "Execute Search\nNow we run the search.\nTo start, we need to get some initial query vectors and decide how many iterations to run. We will use 10 query vectors and run for 10 iterations\n\nn_queries = 10\nn_iters = 10\nquery_vectors = np.random.rand(n_queries, size)\n\n\nlog = runner.search(query_vectors, n_iters)"
+  },
+  {
+    "objectID": "tutorials/basic_example.html#results-log",
+    "href": "tutorials/basic_example.html#results-log",
+    "title": "Basic Tutorial",
+    "section": "Results Log",
+    "text": "Results Log\nRunner.search returns a SearchLog which holds the query_vectors and query_results for each iteration\n\niteration = 5\nquery_vectors = log.batch_log[iteration]['queries']\niteration_results = log.batch_log[iteration]['results']"
+  },
+  {
+    "objectID": "tutorials/basic_example.html#compiled-results",
+    "href": "tutorials/basic_example.html#compiled-results",
+    "title": "Basic Tutorial",
+    "section": "Compiled Results",
+    "text": "Compiled Results\nGenerally what we want is the scored items returned from the dataset. The compile_results function returns this as a Dataset\n\nresults = log.compile_results()\nresults = results.sort('score', reverse=True)\nresults\n\nDataset({\n    features: ['db_idx', 'embedding', 'data', 'score'],\n    num_rows: 227\n})\n\n\n\nNotes on results\nAs seen above, the compiled results contains 227 items. We used 10 query vectors, returned 10 items per query, and ran for 10 iterations. Which would imply 1000 total queries. The reduction from 1000 to 227 is the result of query vectors converging to the same location and returning duplicate values.\nThe degree of duplicate results depends on: * size of the vector database * how query vectors are initialized * how many local optima exist for your score function * how many iterations are run * how many results are returned per query"
+  },
+  {
+    "objectID": "tutorials/basic_example.html#trajectories",
+    "href": "tutorials/basic_example.html#trajectories",
+    "title": "Basic Tutorial",
+    "section": "Trajectories",
+    "text": "Trajectories\nWe can also grab “trajectories” which show the evolution of a query vector over time. log.compile_trajectories returns a dictionary of the form:\n{\n    'query_idx' : {\n        'query_vectors' : (iterations, vector_size) array,\n        'scores' : [list of scores at each iteration]\n    }\n}\n\ntrajectories = log.compile_trajectories()\n\n\nquery_path = trajectories[0]['query_vectors']\nscore_path = trajectories[0]['scores']\n\n\nfor k,v in trajectories.items():\n    all_scores = v['scores']\n    \n    plt.plot([np.array(i).mean() for i in all_scores], color='b', alpha=0.5)"
+  },
+  {
+    "objectID": "tutorials/basic_example.html#results-evaluation",
+    "href": "tutorials/basic_example.html#results-evaluation",
+    "title": "Basic Tutorial",
+    "section": "Results Evaluation",
+    "text": "Results Evaluation\nStarting from random inputs, we screened 227 items in the database during our search.\nTo evaluate the screen, we will look at what percent of the top K scoring items were found for various values of K.\n\n# generate ground truth with filtering\nground_truth = vector_dataset.map(lambda row, idx: {'score' : simple_score(row), 'db_idx':idx}, with_indices=True)\nground_truth = ground_truth.filter(lambda row: row['rand']<0.9)\nground_truth = ground_truth.sort('score', reverse=True)\n\n                                                                                \n\n\n\nk_vals = [1, 5, 10, 50]\nrecovered_set = set(results['db_idx'])\nmetrics = []\n\nfor k in k_vals:\n    gt_set = set(ground_truth['db_idx'][:k])\n    metrics.append(len(gt_set.intersection(recovered_set)) / len(gt_set))\n\n\nmetrics\n\n[1.0, 0.6, 0.7, 0.5]\n\n\nThis tells us that we successfully recovered 50% of the top 50 scoring items in the dataset starting with random vector queries and screening 2.27% of the total dataset"
+  },
+  {
+    "objectID": "huggingface.html",
+    "href": "huggingface.html",
+    "title": "huggingface",
+    "section": "",
+    "text": "HFDatabase integrates with a Huggingface Dataset with a built vector index.\n\nsource\n\n\n\n HFDatabase (dataset:datasets.arrow_dataset.Dataset, index_name:str,\n             k:int)\n\nBase class for vector database backends\n\n\n\n\nType\nDetails\n\n\n\n\ndataset\nDataset\nDataset with built vector index\n\n\nindex_name\nstr\nname of vector index\n\n\nk\nint\nreturns k values per query vector\n\n\n\n\nvectors = np.random.randn(64, 256)\ndataset = Dataset.from_list([{'embedding':i} for i in vectors])\ndataset.add_faiss_index('embedding')\n\nhf_db = HFDatabase(dataset, 'embedding', 5)\n\nquery_vecs = np.random.randn(2, 256)\nquery_dataset = hf_db.query(query_vecs)\n\n100%|███████████████████████████████████████████| 1/1 [00:00<00:00, 2542.00it/s]"
+  },
+  {
+    "objectID": "qdrant.html",
+    "href": "qdrant.html",
+    "title": "qdrant",
+    "section": "",
+    "text": "QdrantDatabase integrates with a Qdrant database. search_request_kwargs can be any valid inputs to a Qdrant SearchRequest\n\nsource\n\n\n\n QdrantDatabase (qdrant_client:qdrant_client.qdrant_client.QdrantClient,\n                 collection_name:str, k:int,\n                 search_request_kwargs:Optional[dict]=None)\n\nQdrant backend\n\n\n\n\n\n\n\n\n\n\nType\nDefault\nDetails\n\n\n\n\nqdrant_client\nQdrantClient\n\nqdrant client\n\n\ncollection_name\nstr\n\nqdrant collection name\n\n\nk\nint\n\nreturn k results per query\n\n\nsearch_request_kwargs\ntyping.Optional[dict]\nNone\nkwargs for SearchRequest\n\n\n\n\nclient = QdrantClient(host=\"localhost\", port=6444)\n\nres = client.retrieve(\n    collection_name=\"zinc\",\n    ids=[0, 100, 1000],\n    with_vectors=True\n)\nquery_vecs = np.array([i.vector for i in res])\n\nqdrant_db = QdrantDatabase(client, 'zinc', 10)\n\nsearch_filter = models.Filter(\n    must=[\n            models.FieldCondition(\n            key=\"preds\",\n            range=models.Range(\n                gt=None,\n                gte=None,\n                lt=None,\n                lte=6.0,\n            ),\n        )\n    ]\n)\n\nqdrant_db = QdrantDatabase(client, 'zinc', 10, {'filter' : search_filter})\n\nres = qdrant_db.query(query_vecs)"
+  },
+  {
+    "objectID": "query_update.html",
+    "href": "query_update.html",
+    "title": "query update",
+    "section": "",
+    "text": "The role of QueryUpdate is to take a set of query_vectors, a scored query_dataset and generate a new set of query_vectors\n\nsource\n\n\n\n QueryUpdate ()\n\nQuery update base class"
+  },
+  {
+    "objectID": "query_update.html#reinforcement-learning",
+    "href": "query_update.html#reinforcement-learning",
+    "title": "query update",
+    "section": "Reinforcement Learning",
+    "text": "Reinforcement Learning\nRLUpdate uses basic reinforcement learning to update query vectors. For each query, we gather the embedding and score of each item returned. We whiten the scores so that above average scores have a positive value and below average scores have a negative value. Our gradient update tells the query vectory to move closer to positive value scores and further from negative value scores\n\nsource\n\nRLUpdate\n\n RLUpdate (lr:float, distance_penalty:float=0.0,\n           scale_distance_penalty:bool=True)\n\nReinforcement Learning update\n\n\n\n\n\n\n\n\n\n\nType\nDefault\nDetails\n\n\n\n\nlr\nfloat\n\nlearning rate\n\n\ndistance_penalty\nfloat\n0.0\nquery distance penalty\n\n\nscale_distance_penalty\nbool\nTrue\nif True, penalty = penalty/LR (removed LR bias on penalty)\n\n\n\n\ndef dummy_score(row):\n    return np.linalg.norm(row['embedding'])\n\nvectors = np.random.randn(128, 256)\nvector_dataset = Dataset.from_list([{'embedding' : i} for i in vectors])\nvector_dataset.add_faiss_index('embedding')\n\ndb = HFDatabase(vector_dataset, 'embedding', 10)\nscore = Score(dummy_score)\nupdate_strategy = RLUpdate(0.5)\n\n\nquery_vectors = np.random.randn(3, 256)/10\nquery_dataset = db.query(query_vectors)\nquery_dataset = score(query_dataset)\nupdated_queries = update_strategy(query_vectors, query_dataset)\n\nassert np.all(np.linalg.norm(updated_queries, axis=-1) > np.linalg.norm(query_vectors, axis=-1))\n\nquery_vectors = np.random.randn(4, 256)\n# test \"no result\"\n_ = update_strategy(query_vectors, query_dataset)\n\n100%|████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 1869.12it/s]\n                                                                                             \n\n\n\nq1 = np.random.randn(1, 256)/10\nq2 = np.copy(q1)\n\nu1 = RLUpdate(0.5)\nu2 = RLUpdate(0.5, distance_penalty=1.)\n\nfor i in range(5):\n    qd1 = db.query(q1)\n    qd1 = score(qd1)\n    q1 = u1(q1, qd1)\n    \nfor i in range(5):\n    qd2 = db.query(q2)\n    qd2 = score(qd2)\n    q2 = u2(q2, qd2)\n    \nassert np.array(qd1['distance']).mean() > np.array(qd2['distance']).mean()"
+  },
+  {
+    "objectID": "query_update.html#top-k",
+    "href": "query_update.html#top-k",
+    "title": "query update",
+    "section": "Top K",
+    "text": "Top K\nTopKUpdate creates a new query_vector from the top k results returned. If score_weighting=True, a score-weighted average is used.\n\nsource\n\nTopKUpdate\n\n TopKUpdate (k:int, score_weighting:bool=True)\n\nTop K update\n\n\n\n\n\n\n\n\n\n\nType\nDefault\nDetails\n\n\n\n\nk\nint\n\ntop k value\n\n\nscore_weighting\nbool\nTrue\nif True, top k average is weighted by score\n\n\n\n\ndef dummy_score(row):\n    return np.linalg.norm(row['embedding'])\n\nvectors = np.random.randn(128, 256)\nvector_dataset = Dataset.from_list([{'embedding' : i} for i in vectors])\nvector_dataset.add_faiss_index('embedding')\n\ndb = HFDatabase(vector_dataset, 'embedding', 10)\nscore = Score(dummy_score)\nupdate_strategy = TopKUpdate(3)\n\n\nquery_vectors = np.random.randn(3, 256)/10\nquery_dataset = db.query(query_vectors)\nquery_dataset = score(query_dataset)\nupdated_queries = update_strategy(query_vectors, query_dataset)\n\nassert np.all(np.linalg.norm(updated_queries, axis=-1) > np.linalg.norm(query_vectors, axis=-1))\n\nquery_vectors = np.random.randn(4, 256)\n# test \"no result\"\n_ = update_strategy(query_vectors, query_dataset)\n\n100%|█████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 2002.05it/s]"
+  },
+  {
+    "objectID": "chroma.html",
+    "href": "chroma.html",
+    "title": "chroma",
+    "section": "",
+    "text": "ChromaDatabase integrates with Chroma. query_kwargs can be any valid inputs to chroma_collection.query\n\nsource\n\n\n\n ChromaDatabase\n                 (chroma_collection:chromadb.api.models.Collection.Collect\n                 ion, k:int, query_kwargs:Optional[dict]=None)\n\nChroma backend\n\n\n\n\n\n\n\n\n\n\nType\nDefault\nDetails\n\n\n\n\nchroma_collection\nCollection\n\nChroma collection\n\n\nk\nint\n\nreturn k results per query\n\n\nquery_kwargs\ntyping.Optional[dict]\nNone\nkwargs for chroma_collection.query\n\n\n\n\nchroma_client = chromadb.Client()\n\ndef dummy_embedding(texts):\n    n_docs = len(texts)\n    return np.random.randn(n_docs, 256)\n\ncollection = chroma_client.create_collection(name=\"test\", embedding_function=dummy_embedding)\n\nembs = [list(np.random.randn(256)) for i in range(64)]\ndocs = [f'doc_{i}' for i in range(64)]\nids = [str(i) for i in range(64)]\n\ncollection.add(\n    embeddings=embs,\n    documents=docs,\n    ids=ids\n)\n\nquery_embs = np.random.randn(3, 256)\n\nchroma_db = ChromaDatabase(collection, 5)\n\nquery_dataset = chroma_db.query(query_embs)\n\nUsing embedded DuckDB without persistence: data will be transient"
+  },
+  {
+    "objectID": "utils.html",
+    "href": "utils.html",
+    "title": "utils",
+    "section": "",
+    "text": "source\n\nwhiten\n\n whiten (scores:numpy.ndarray)\n\nWhitens vector of scores\n\n\n\n\nType\nDetails\n\n\n\n\nscores\nndarray\nvector shape (n,) of scores to whiten\n\n\nReturns\nndarray\nvector shape (n,) whitened scores\n\n\n\n\nsource\n\n\npack_dataset\n\n pack_dataset (dataset:datasets.arrow_dataset.Dataset, index_column:str,\n               pack_columns:list[str])\n\n“packs” values in pack_columns by grouping them by the distinct values in index_column\nreturns a dictionary where the keys are the distinct values in index_column and the values are a dictionary mapping column names in pack_columns to the grouped values\n\n\n\n\nType\nDetails\n\n\n\n\ndataset\nDataset\ninput dataset\n\n\nindex_column\nstr\nname of column to group by\n\n\npack_columns\nlist\ncolumns to include in packing\n\n\nReturns\ndict\n\n\n\n\n\nsource\n\n\npack_dataframe\n\n pack_dataframe (df:pandas.core.frame.DataFrame, index_column:str,\n                 pack_columns:list[str])\n\n“packs” values in pack_columns by grouping them by the distinct values in index_column\nreturns a dictionary where the keys are the distinct values in index_column and the values are a dictionary mapping column names in pack_columns to the grouped values\n\n\n\n\nType\nDetails\n\n\n\n\ndf\nDataFrame\ninput dataframe\n\n\nindex_column\nstr\nname of column to group by\n\n\npack_columns\nlist\ncolumns to include in packing\n\n\nReturns\ndict\n\n\n\n\n\nsource\n\n\ncompute_rl_grad\n\n compute_rl_grad (query_vectors:numpy.ndarray,\n                  query_dataset:datasets.arrow_dataset.Dataset,\n                  distance_penalty:float)\n\n\n\n\n\n\n\n\n\n\nType\nDetails\n\n\n\n\nquery_vectors\nndarray\nquery vectors\n\n\nquery_dataset\nDataset\ndataset with [‘query_idx’, ‘embedding’, ‘score’] columns\n\n\ndistance_penalty\nfloat\ndistance penalty\n\n\nReturns\nndarray\narray of gradient vectors"
+  }
+]
