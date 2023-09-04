@@ -10,7 +10,11 @@ from .imports import *
 def batch_list(inputs: list, 
                batch_size: int
               ) -> list[list]:
-    return [inputs[i:i+batch_size] for i in range(0, len(inputs), batch_size)]
+    if batch_size==0:
+        output = [inputs]
+    else:
+        output = [inputs[i:i+batch_size] for i in range(0, len(inputs), batch_size)]
+    return output
 
 def unbatch_list(inputs: list[list]) -> list:
     return [item for sublist in inputs for item in sublist]
