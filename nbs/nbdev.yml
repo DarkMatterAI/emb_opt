@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "emb_opt"
+  site-url: "https://DarkMatterAI.github.io/emb_opt"
+  description: "A lightweight framework to efficiently screen vector databases"
+  repo-branch: main
+  repo-url: "https://github.com/DarkMatterAI/emb_opt"
