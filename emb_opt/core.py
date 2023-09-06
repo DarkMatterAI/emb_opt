@@ -22,11 +22,9 @@ def build_batch_from_embeddings(embeddings: List[Embedding]):
 # %% ../nbs/02_core.ipynb 5
 class Module():
     def __init__(self, 
-                 name: str,
                  output_schema: BaseModel,
                  function: Callable[List[BaseModel], List[BaseModel]], 
                 ):
-        self.name = name
         self.output_schema = output_schema
         self.function = function
         

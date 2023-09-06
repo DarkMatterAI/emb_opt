@@ -11,12 +11,11 @@ from .schemas import Item, Query, Batch, DataSourceFunction, DataSourceResponse
 # %% ../nbs/03_data_source.ipynb 4
 class DataSourceModule(Module):
     def __init__(self,
-                 name: str,
                  function: DataSourceFunction,
                 ):
-        super().__init__(name, DataSourceResponse, function)
+        super().__init__(DataSourceResponse, function)
         
-    def gather_inputs(self, batch: Batch) -> (List[Tuple], List[BaseModel]):
+    def gather_inputs(self, batch: Batch) -> (List[Tuple], List[Query]):
         idxs, inputs = batch.flatten_queries()
         return (idxs, inputs)
     
