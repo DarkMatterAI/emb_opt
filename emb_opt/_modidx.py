@@ -84,5 +84,6 @@ d = { 'settings': { 'branch': 'main',
                                'emb_opt.score.ScoreModule.__init__': ('score.html#scoremodule.__init__', 'emb_opt/score.py'),
                                'emb_opt.score.ScoreModule.gather_inputs': ('score.html#scoremodule.gather_inputs', 'emb_opt/score.py'),
                                'emb_opt.score.ScoreModule.scatter_results': ('score.html#scoremodule.scatter_results', 'emb_opt/score.py')},
+            'emb_opt.update': {},
             'emb_opt.utils': { 'emb_opt.utils.batch_list': ('utils.html#batch_list', 'emb_opt/utils.py'),
                                'emb_opt.utils.unbatch_list': ('utils.html#unbatch_list', 'emb_opt/utils.py')}}}

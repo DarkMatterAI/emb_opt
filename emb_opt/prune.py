@@ -5,7 +5,7 @@ __all__ = ['PruneModule']
 
 # %% ../nbs/06_prune.ipynb 3
 from .imports import *
-from .core import Module, build_batch_from_embeddings
+from .core import Module
 from .schemas import Item, Query, Batch, PruneFunction, PruneResponse
 
 # %% ../nbs/06_prune.ipynb 4
