@@ -9,7 +9,7 @@ from .utils import batch_list, unbatch_list
 from .schemas import Batch, Embedding, Query
 
 # %% ../nbs/02_core.ipynb 4
-def build_batch_from_embeddings(embeddings: List[Embedding]):
+def build_batch_from_embeddings(embeddings: List[Embedding]) -> Batch:
     queries = []
     for i, embedding in enumerate(embeddings):
         query = Query(item=None, embedding=embedding, data=None, query_results=None)

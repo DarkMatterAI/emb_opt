@@ -10,24 +10,26 @@ from .schemas import (
                             Item, 
                             Query, 
                             Batch, 
-                            UpdateFunction,
                             ContinuousUpdateResponse,
+                            UpdateFunction,
                             UpdateResponse,
+                            UpdateResponseValidator,
                             )
 
 # %% ../nbs/07_update.ipynb 4
 class UpdateModule(Module):
     def __init__(self, function: UpdateFunction):
-        super().__init__(UpdateResponse, function)
+        super().__init__(UpdateResponseValidator, function)
         
     def validate_schema(self, results: UpdateResponse) -> UpdateResponse:
-        results = self.output_schema.model_validate(results)
-        return results
+        results =  self.output_schema.model_validate({'results':results}, strict=True)               
+        return results.results
         
     def build_batch(self, results: UpdateResponse) -> Batch:
-        results = results.results
         if isinstance(results, Batch):
             batch = results
+        elif isinstance(results[0], Query):
+            batch = Batch(queries=results)
         elif isinstance(results[0], Item):
             batch = Batch(queries=[Query.from_item(i) for i in results])
         elif isinstance(results[0], ContinuousUpdateResponse):
