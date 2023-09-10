@@ -6,6 +6,7 @@ __all__ = ['DataSourceFunction', 'FilterFunction', 'ScoreFunction', 'PruneFuncti
 
 # %% ../nbs/00_schemas.ipynb 3
 from .imports import *
+# from pydantic import Extra
 
 # %% ../nbs/00_schemas.ipynb 5
 class InteralData(BaseModel):
@@ -14,60 +15,42 @@ class InteralData(BaseModel):
     removal_reason: Optional[str]
     parent_id: Optional[str]
     collection_id: Optional[int]
-        
-    @model_validator(mode='before')
-    @classmethod
-    def _fill_data(cls, inputs: Any) -> Any:
-        if isinstance(inputs, BaseModel):
-            inputs = inputs.model_dump()
-            
-        if inputs.get('id', None) is None:
-            inputs['id'] = str(uuid.uuid1())
-            
-        if inputs.get('removal_reason', None) is None:
-            inputs['removal_reason'] = ''
-            
-        return inputs
 
 # %% ../nbs/00_schemas.ipynb 6
-class Item(BaseModel):
-    item: Optional[str]
+class Item(BaseModel, extra='allow'):
+    item: Optional[Any]
     embedding: List[float]
     score: Optional[float]
     data: Optional[dict]
-    internal: Optional[InteralData]
+    
+    @model_validator(mode='after')
+    def _fill_internal(self):
+        if not hasattr(self, 'internal'):
+            self.internal = InteralData(
+                                    id=str(uuid.uuid1()), 
+                                    removed=False, 
+                                    removal_reason=None,
+                                    parent_id=None, 
+                                    collection_id=None)
         
-    @model_validator(mode='before')
-    @classmethod
-    def _fill_data(cls, inputs: Any) -> Any:
-        if isinstance(inputs, BaseModel):
-            inputs = inputs.model_dump()
-
-        if inputs.get('data', None) is None:
-            inputs['data'] = {}
+        if self.data is None:
+            self.data = {}
             
-        if inputs.get('internal', None) is None:
-            inputs['internal'] = InteralData(id=None, removed=False, 
-                                           parent_id=None, collection_id=None)
-
-        if inputs.get('score', None) is None:
-            inputs['score'] = None
-
-        if inputs.get('item', None) is None:
-            inputs['item'] = None
-
-        return inputs
+        return self
     
     def update_internal(self, **kwargs):
         self.internal.__dict__.update(kwargs)
+        
+    @classmethod
+    def from_minimal(cls, item=None, embedding=None, score=None, data=None):
+        return cls(item=item, embedding=embedding, score=score, data=data)
 
-# %% ../nbs/00_schemas.ipynb 7
-class Query(BaseModel):
-    item: Optional[str]
-    embedding: Optional[List[float]]
+# %% ../nbs/00_schemas.ipynb 8
+class Query(BaseModel, extra='allow'):
+    item: Optional[Any]
+    embedding: List[float]
     data: Optional[dict]
     query_results: Optional[list[Item]]
-    internal: Optional[InteralData]
         
     def __iter__(self):
         return iter(self.query_results)
@@ -90,60 +73,36 @@ class Query(BaseModel):
                     yield (i, result)
             else:
                 yield (i, result)
+    
+    @model_validator(mode='after')
+    def _fill_internal(self):
+        if not hasattr(self, 'internal'):
+            self.internal = InteralData(id=str(uuid.uuid1()), removed=False, removal_reason=None,
+                                    parent_id=None, collection_id=None)
         
-    @model_validator(mode='before')
-    @classmethod
-    def _fill_data(cls, inputs: Any) -> Any:
-        if isinstance(inputs, BaseModel):
-            inputs = inputs.model_dump()
-                        
-        if inputs.get('data', None) is None:
-            inputs['data'] = {}
+        if self.query_results is None:
+            self.query_results = []
             
-        if inputs.get('internal', None) is None:
-            inputs['internal'] = InteralData(id=str(uuid.uuid1()), removed=False, 
-                                           parent_id=None, collection_id=None)
-        
-        if inputs.get('query_results', None) is None:
-            inputs['query_results'] = []
+        if self.data is None:
+            self.data = {}
             
-        if inputs.get('item', None) is None:
-            inputs['item'] = None
-
-        return inputs
+        return self
                 
     @classmethod
     def from_item(cls, item: Item):
-        inputs = {
-            'item' : item.item,
-            'embedding' : item.embedding,
-            'data' : item.data,
-            'query_results' : [],
-            'internal' : {
-                'id' : None,
-                'removed' : False,
-                'parent_id' : item.internal.id,
-                'collection_id' : item.internal.collection_id
-            }
-        }
-        return cls(**inputs)
+        query = cls(item=item.item, embedding=item.embedding, data=item.data, query_results=None)
+        query.internal.parent_id = item.internal.id
+        query.internal.collection_id = item.internal.collection_id
+        return query
     
     @classmethod
     def from_parent_query(cls, embedding: List[float], parent_query):
-        inputs = {
-            'embedding' : embedding,
-            'internal' : {
-                'id' : None,
-                'removed' : False,
-                'parent_id' : parent_query.internal.id,
-                'collection_id' : parent_query.internal.collection_id
-            }
-        }
-        
-        return cls(**inputs)
+        query = cls(item=None, embedding=embedding, data=None, query_results=None)
+        query.internal.parent_id = parent_query.internal.id
+        query.internal.collection_id = parent_query.internal.collection_id
+        return query
     
     def add_query_results(self, query_results: List[Item]):
-        
         parent_id = self.internal.id
         collection_id = self.internal.collection_id
         for result in query_results:
@@ -154,8 +113,12 @@ class Query(BaseModel):
         self.internal.__dict__.update(kwargs)
         if (len(self.query_results)>0) and (len(list(self.valid_results()))==0):
             self.internal.__dict__.update({'removed':True, 'removal_reason':'all query results removed'})
+            
+    @classmethod
+    def from_minimal(cls, item=None, embedding=None, data=None, query_results=None):
+        return cls(item=item, embedding=embedding, data=data, query_results=query_results)
 
-# %% ../nbs/00_schemas.ipynb 9
+# %% ../nbs/00_schemas.ipynb 10
 class Batch(BaseModel):
     queries: List[Query]
         
@@ -204,16 +167,16 @@ class Batch(BaseModel):
             outputs.append(r)
         return idxs, outputs
 
-# %% ../nbs/00_schemas.ipynb 12
+# %% ../nbs/00_schemas.ipynb 13
 class DataSourceResponse(BaseModel):
     valid: bool
     data: Optional[Dict]
     query_results: List[Item]
 
-# %% ../nbs/00_schemas.ipynb 13
+# %% ../nbs/00_schemas.ipynb 14
 DataSourceFunction = Callable[List[Query], List[DataSourceResponse]]
 
-# %% ../nbs/00_schemas.ipynb 15
+# %% ../nbs/00_schemas.ipynb 16
 class FilterResponse(BaseModel):
     valid: bool
     data: Optional[dict]
@@ -225,10 +188,10 @@ class FilterResponse(BaseModel):
             data["data"] = None
         return data
 
-# %% ../nbs/00_schemas.ipynb 16
+# %% ../nbs/00_schemas.ipynb 17
 FilterFunction = Callable[List[Item], List[FilterResponse]]
 
-# %% ../nbs/00_schemas.ipynb 18
+# %% ../nbs/00_schemas.ipynb 19
 class ScoreResponse(BaseModel):
     valid: bool
     score: Optional[float]
@@ -241,10 +204,10 @@ class ScoreResponse(BaseModel):
             data["data"] = None
         return data
 
-# %% ../nbs/00_schemas.ipynb 19
+# %% ../nbs/00_schemas.ipynb 20
 ScoreFunction = Callable[List[Item], List[ScoreResponse]]
 
-# %% ../nbs/00_schemas.ipynb 21
+# %% ../nbs/00_schemas.ipynb 22
 class PruneResponse(BaseModel):
     valid: bool
     data: Optional[dict]
@@ -256,8 +219,8 @@ class PruneResponse(BaseModel):
             data["data"] = None
         return data
 
-# %% ../nbs/00_schemas.ipynb 22
+# %% ../nbs/00_schemas.ipynb 23
 PruneFunction = Callable[List[Query], List[PruneResponse]]
 
-# %% ../nbs/00_schemas.ipynb 24
+# %% ../nbs/00_schemas.ipynb 25
 UpdateFunction = Callable[List[Query], List[Query]]

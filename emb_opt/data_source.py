@@ -43,12 +43,14 @@ class NumpyDataPlugin(DataSourcePlugin):
     def __init__(self,
                  k: int,
                  item_embeddings: np.ndarray,
+                 item_list: Optional[List[str]]=None,
                  item_data: Optional[List[Dict]]=None,
                  distance_metric: str='euclidean'
                 ):
         
         self.k = k
         self.item_embeddings = item_embeddings
+        self.item_list = item_list
         self.item_data = item_data
         self.distance_metric = distance_metric
         
@@ -63,10 +65,14 @@ class NumpyDataPlugin(DataSourcePlugin):
             items = []
             query_data = {'query_distance' : []}
             for j in topk[i]:
-                data = dict(self.item_data[j]) if self.item_data else {}
                 query_data['query_distance'].append(distances[i,j])
-                item = Item(embedding=self.item_embeddings[j], data=data)
+                
+                data = dict(self.item_data[j]) if self.item_data else {}
+                item_value = self.item_list[j] if self.item_list else None
+                
+                item = Item(embedding=self.item_embeddings[j], data=data, score=None, item=item_value)
                 items.append(item)
+                
             result = DataSourceResponse(valid=True, data=query_data, query_results=items)
             outputs.append(result)
             
@@ -77,13 +83,15 @@ class HugggingfaceDataPlugin(DataSourcePlugin):
     def __init__(self,
                  k: int,
                  dataset: datasets.Dataset,
-                 index_name: str
+                 index_name: str,
+                 item_name: Optional[str]=None
                 ):
         
         self.k = k
         self.dataset = dataset
         self.index_name = index_name
         self.index = self.dataset.get_index(index_name)
+        self.item_name = item_name
         
     def __call__(self, inputs: List[Query]) -> List[DataSourceResponse]:
         queries = np.array([i.embedding for i in inputs])
@@ -102,8 +110,9 @@ class HugggingfaceDataPlugin(DataSourcePlugin):
                 dataset_index = indices[i, j]
                 item_data = dict(self.dataset[int(dataset_index)])
                 embedding = item_data.pop(self.index_name)
+                item = item_data.pop(self.item_name) if self.item_name else None
                 
-                item = Item(embedding=embedding, data=item_data)
+                item = Item(embedding=embedding, data=item_data, item=item, score=None)
                 items.append(item)
                 
             result = DataSourceResponse(valid=True, data=query_data, query_results=items)
