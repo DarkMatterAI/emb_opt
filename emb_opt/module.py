@@ -28,8 +28,9 @@ class Module():
         
     def __call__(self, batch: Batch) -> Batch:
         
-        idxs, inputs = self.gather_inputs(batch)
-        results = self.function(inputs)
-        results = self.validate_schema(results)
-        self.scatter_results(batch, idxs, results)
+        if self.function is not None:
+            idxs, inputs = self.gather_inputs(batch)
+            results = self.function(inputs)
+            results = self.validate_schema(results)
+            self.scatter_results(batch, idxs, results)
         return batch

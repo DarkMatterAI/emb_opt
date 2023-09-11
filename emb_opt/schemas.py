@@ -6,7 +6,6 @@ __all__ = ['DataSourceFunction', 'FilterFunction', 'ScoreFunction', 'PruneFuncti
 
 # %% ../nbs/00_schemas.ipynb 3
 from .imports import *
-# from pydantic import Extra
 
 # %% ../nbs/00_schemas.ipynb 5
 class InteralData(BaseModel):
@@ -52,7 +51,6 @@ class Item(BaseModel, extra='allow'):
 
 # %% ../nbs/00_schemas.ipynb 8
 class Query(BaseModel, extra='allow'):
-    id: Optional[Union[str, int]]
     item: Optional[Any]
     embedding: List[float]
     data: Optional[dict]
@@ -90,6 +88,9 @@ class Query(BaseModel, extra='allow'):
                                         collection_id=None,
                                         iteration=None
                                     )
+            
+        if not hasattr(self, 'id'):
+            self.id = f'query_{str(uuid.uuid1())}'
         
         if self.query_results is None:
             self.query_results = []
@@ -97,20 +98,18 @@ class Query(BaseModel, extra='allow'):
         if self.data is None:
             self.data = {}
             
-        if self.id is None:
-            self.id = f'query_{str(uuid.uuid1())}'
-            
         return self
                 
     @classmethod
     def from_item(cls, item: Item):
-        query = cls(id=None, item=item.item, embedding=item.embedding, data=item.data, query_results=None)
-        query.update_internal(parent_id=item.id, collection_id=item.internal.collection_id)
+        query = cls(item=item.item, embedding=item.embedding, data=item.data, query_results=None)
+        query.data['_source_item_id'] = item.id
+        query.update_internal(parent_id=item.internal.parent_id, collection_id=item.internal.collection_id)
         return query
     
     @classmethod
     def from_parent_query(cls, embedding: List[float], parent_query):
-        query = cls(id=None, item=None, embedding=embedding, data=None, query_results=None)
+        query = cls(item=None, embedding=embedding, data=None, query_results=None)
         query.update_internal(parent_id=parent_query.id, collection_id=parent_query.internal.collection_id)
         return query
     
@@ -128,8 +127,8 @@ class Query(BaseModel, extra='allow'):
             self.internal.__dict__.update({'removed':True, 'removal_reason':'all query results removed'})
             
     @classmethod
-    def from_minimal(cls, id=None, item=None, embedding=None, data=None, query_results=None):
-        return cls(id=None, item=item, embedding=embedding, data=data, query_results=query_results)
+    def from_minimal(cls, item=None, embedding=None, data=None, query_results=None):
+        return cls(item=item, embedding=embedding, data=data, query_results=query_results)
 
 # %% ../nbs/00_schemas.ipynb 10
 class Batch(BaseModel):
