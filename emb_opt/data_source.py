@@ -9,9 +9,11 @@ from .utils import build_batch_from_embeddings
 from .module import Module
 from .schemas import Item, Query, Batch, DataSourceFunction, DataSourceResponse
 
-# %% ../nbs/04_data_source.ipynb 4
+# %% ../nbs/04_data_source.ipynb 5
 class DataSourceModule(Module):
-    def __init__(self, function: DataSourceFunction):
+    def __init__(self, 
+                 function: DataSourceFunction # data function
+                ):
         super().__init__(DataSourceResponse, function)
         
     def gather_inputs(self, batch: Batch) -> (List[Tuple], List[Query]):
@@ -33,20 +35,79 @@ class DataSourceModule(Module):
             else:
                 batch_item.add_query_results(result.query_results)
 
-# %% ../nbs/04_data_source.ipynb 6
+# %% ../nbs/04_data_source.ipynb 9
 class DataSourcePlugin():
+    '''
+    DataSourcePlugin - documentation for plugin functions to `DataSourceFunction`
+    
+    A valid `DataSourceFunction` is any function that maps `List[Query]` to 
+    `List[DataSourceResponse]`. The inputs will be given as `Query` objects. 
+    The outputs can be either a list of `DataSourceResponse` objects or a list of 
+    valid json dictionaries that match the `DataSourceResponse` schema
+    
+    Query schema:
+    
+    `{
+        'item' : Optional[Any],
+        'embedding' : List[float],
+        'data' : Optional[Dict],
+        'query_results': [] # will be empty at this stage
+    }`
+    
+    Item schema:
+    
+    `{
+        'id' : Optional[Union[str, int]]
+        'item' : Optional[Any],
+        'embedding' : List[float],
+        'score' : None, # will be None at this stage
+        'data' : Optional[Dict],
+    }`
+    
+    Input schema:
+    
+    `List[Query]`
+    
+    DataSourceResponse schema:
+    
+    `{
+        'valid' : bool,
+        'data' : Optional[Dict],
+        'query_results' : List[Item]
+    }`
+    
+    Output schema:
+    
+    `List[DataSourceResponse]`
+    
+    '''
     def __call__(self, inputs: List[Query]) -> List[DataSourceResponse]:
         pass
 
-# %% ../nbs/04_data_source.ipynb 7
+# %% ../nbs/04_data_source.ipynb 10
 class NumpyDataPlugin(DataSourcePlugin):
+    '''
+    NumpyDataPlugin - data plugin for working with numpy arrays. The 
+    data query will run `k` nearest neighbors of the query embeddings 
+    against the `item_embeddings` using `distance_metric`
+    
+    Optionally, `item_data` can be provided as a list of dicts, where 
+    `item_data[i]` corresponds to the data for `item_embeddings[i]`.
+    
+    If `item_data` is provided, `item_data[i]['id_key']` defines 
+    the ID of item `i`, and `item_data[i]['item_key']` defines the 
+    specific item `i`
+    
+    `distance_metric` is any valid scipy distance metric. see 
+    https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.cdist.html
+    '''
     def __init__(self,
-                 k: int,
-                 item_embeddings: np.ndarray,
-                 item_data: Optional[List[Dict]]=None,
-                 id_key: Optional[str]=None,
-                 item_key: Optional[str]=None,
-                 distance_metric: str='euclidean'
+                 k: int,                               # k nearest neighbors to return
+                 item_embeddings: np.ndarray,          # item embeddings
+                 item_data: Optional[List[Dict]]=None, # Optional dict of item data
+                 id_key: Optional[str]=None,           # Optional key for item id (should be in `item_data` dict)
+                 item_key: Optional[str]=None,         # Optional key for item value (should be in `item_data` dict)
+                 distance_metric: str='euclidean'      # distance metric, see options at https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.cdist.html
                 ):
         
         self.k = k
@@ -93,14 +154,27 @@ class NumpyDataPlugin(DataSourcePlugin):
             
         return outputs
 
-# %% ../nbs/04_data_source.ipynb 9
+# %% ../nbs/04_data_source.ipynb 12
 class HugggingfaceDataPlugin(DataSourcePlugin):
+    '''
+    HugggingfaceDataPlugin - data plugin for working with 
+    huggingface datasets library.
+    
+    The input `dataset` should have a faiss embedding index 
+    denoted by `index_name`.
+    
+    The data query will run `k` nearest neighbors against the 
+    dataset index based on the metric used to create the index
+    
+    Optionally, `item_key` denotes the column in `dataset` defining a 
+    specific item, and `id_key` denotes the column defining an item's ID
+    '''
     def __init__(self,
-                 k: int,
-                 dataset: datasets.Dataset,
-                 index_name: str,
-                 item_key: Optional[str]=None,
-                 id_key: Optional[str]=None
+                 k: int,                       # k nearest neighbors to return
+                 dataset: datasets.Dataset,    # input dataset
+                 index_name: str,              # name of the faiss index in `dataset`
+                 item_key: Optional[str]=None, # dataset column denoting item value
+                 id_key: Optional[str]=None    # dataset column denoting item id
                 ):
         
         self.k = k

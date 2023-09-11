@@ -21,19 +21,19 @@ from .prune import PruneModule
 from .update import UpdateModule
 from .log import Log
 
-# %% ../nbs/10_runner.ipynb 4
+# %% ../nbs/10_runner.ipynb 5
 class Runner():
     def __init__(self,
-                 data_plugin: DataSourceFunction,
-                 filter_plugin: Optional[FilterFunction],
-                 score_plugin: ScoreFunction,
-                 prune_plugin: Optional[PruneFunction],
-                 update_plugin: UpdateFunction
+                 data_plugin: DataSourceFunction,          # data source function
+                 filter_plugin: Optional[FilterFunction],  # optional filter function
+                 score_plugin: ScoreFunction,              # score function
+                 prune_plugin: Optional[PruneFunction],    # optional prune function
+                 update_plugin: UpdateFunction             # update function
                 ):
         self.data_module = DataSourceModule(data_plugin)
-        self.filter_module = FilterModule(filter_plugin) #if filter_plugin else None
+        self.filter_module = FilterModule(filter_plugin)
         self.score_module = ScoreModule(score_plugin)
-        self.prune_module = PruneModule(prune_plugin) #if prune_plugin else None
+        self.prune_module = PruneModule(prune_plugin)
         self.update_module = UpdateModule(update_plugin)
         
     def prepare_batch(self, batch: Batch, iteration: int):
@@ -41,7 +41,12 @@ class Runner():
             query.update_internal(iteration=iteration)
 
             
-    def step(self, batch: Batch, log: Log, iteration: int, verbose: bool=True):
+    def step(self, 
+             batch: Batch, 
+             log: Log, 
+             iteration: int, 
+             verbose: bool=True
+            ) -> Batch:
         self.prepare_batch(batch, iteration)
         
         batch = self.data_module(batch)
@@ -58,7 +63,12 @@ class Runner():
             batch = None
         return batch
         
-    def search(self, batch: Batch, iterations: int, log: Optional[Log]=None, verbose: bool=True):
+    def search(self, 
+               batch: Batch, 
+               iterations: int, 
+               log: Optional[Log]=None, 
+               verbose: bool=True
+              ) -> (Batch, Log):
         if log is None:
             log = Log()
             
@@ -71,7 +81,7 @@ class Runner():
             
         return batch, log
             
-    def report_scores(self, batch, iteration, report):
+    def report_scores(self, batch: Batch, iteration: int, report: bool):
         if report:
             mean_scores = [np.array([i.score for i in query.valid_results()]).mean() 
                       for query in batch.flatten_queries()[1]]

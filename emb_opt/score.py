@@ -8,9 +8,11 @@ from .imports import *
 from .module import Module
 from .schemas import Item, Query, Batch, ScoreFunction, ScoreResponse
 
-# %% ../nbs/06_score.ipynb 4
+# %% ../nbs/06_score.ipynb 5
 class ScoreModule(Module):
-    def __init__(self, function: ScoreFunction):
+    def __init__(self, 
+                 function: ScoreFunction # score function
+                ):
         super().__init__(ScoreResponse, function)
         
     def gather_inputs(self, batch: Batch) -> (List[Tuple], List[Item]):
@@ -36,7 +38,42 @@ class ScoreModule(Module):
         for query in batch:
             query.update_internal()
 
-# %% ../nbs/06_score.ipynb 6
+# %% ../nbs/06_score.ipynb 7
 class ScorePlugin():
+    '''
+    ScorePlugin - documentation for plugin functions to `ScoreFunction`
+    
+    A valid `ScoreFunction` is any function that maps `List[Item]` to
+    `List[ScoreResponse]`. The inputs will be given as `Item` objects. 
+    The outputs can be either a list of `ScoreResponse` objects or a list 
+    of valid json dictionaries that match the `ScoreResponse` schema.
+    
+    Item schema:
+    
+    `{
+        'id' : Optional[Union[str, int]]
+        'item' : Optional[Any],
+        'embedding' : List[float],
+        'score' : None, # will be None at this stage
+        'data' : Optional[Dict],
+    }`
+    
+    Input schema:
+    
+    `List[Item]`
+    
+    ScoreResponse schema:
+
+    `{
+        'valid' : bool,
+        'score' : Optional[float], # can be None if valid=False
+        'data' : Optional[Dict],
+    }`
+    
+    Output schema:
+    
+    `List[ScoreResponse]`
+    
+    '''
     def __call__(self, inputs: List[Query]) -> List[ScoreResponse]:
         pass

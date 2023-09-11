@@ -9,7 +9,7 @@ from .utils import whiten
 from .module import Module
 from .schemas import Item, Query, Batch, UpdateFunction
 
-# %% ../nbs/08_update.ipynb 4
+# %% ../nbs/08_update.ipynb 5
 class UpdateModule(Module):
     def __init__(self, function: UpdateFunction):
         super().__init__(Query, function)
@@ -25,14 +25,59 @@ class UpdateModule(Module):
         new_queries = self.validate_schema(new_queries)
         return Batch(queries=new_queries)
 
-# %% ../nbs/08_update.ipynb 8
+# %% ../nbs/08_update.ipynb 10
 class UpdatePlugin():
+    '''
+    UpdatePlugin - documentation for plugin functions to `UpdateFunction`
+    
+    A valid `UpdateFunction` is any function that maps `List[Query]` to 
+    `List[Query]`. The inputs will be given as `Query` objects. 
+    The outputs can be either a list of `Query` objects or a list of 
+    valid json dictionaries that match the `Query` schema. The number of 
+    outputs can be different from the number of inputs
+    
+    Item schema:
+    
+    `{
+        'id' : Optional[Union[str, int]]
+        'item' : Optional[Any],
+        'embedding' : List[float],
+        'score' : float,
+        'data' : Optional[Dict],
+    }`
+    
+    
+    Query schema:
+    
+    `{
+        'item' : Optional[Any],
+        'embedding' : List[float],
+        'data' : Optional[Dict],
+        'query_results': List[Item]
+    }`
+    
+    Input schema:
+    
+    `List[Query]`
+
+    Output schema:
+    
+    `List[Query]`
+    
+    '''
     def __call__(self, inputs: List[Query]) -> List[Query]:
         pass
 
-# %% ../nbs/08_update.ipynb 9
+# %% ../nbs/08_update.ipynb 11
 class TopKDiscreteUpdate(UpdatePlugin):
-    def __init__(self, k: int):
+    '''
+    TopKDiscreteUpdate - discrete update that 
+    generates `k` new queries from the top `k` 
+    scoring items in each input query
+    '''
+    def __init__(self, 
+                 k: int # top k items to return as new queries
+                ):
         self.k = k
         
     def __call__(self, inputs: List[Query]) -> List[Query]:
@@ -47,9 +92,16 @@ class TopKDiscreteUpdate(UpdatePlugin):
         outputs = [Query.from_item(i) for i in outputs]
         return outputs
 
-# %% ../nbs/08_update.ipynb 11
+# %% ../nbs/08_update.ipynb 13
 class TopKContinuousUpdate():
-    def __init__(self, k: int):
+    '''
+    TopKContinuousUpdate - continuous update that 
+    generates 1 new query by averaging the top `k` 
+    scoring item embeddings for each input query
+    '''
+    def __init__(self, 
+                 k: int # top k items to average
+                ):
         self.k = k
         
     def __call__(self, inputs: List[Query]) -> List[Query]:
@@ -65,48 +117,75 @@ class TopKContinuousUpdate():
             outputs.append(output)
         return outputs
 
-# %% ../nbs/08_update.ipynb 13
+# %% ../nbs/08_update.ipynb 15
 class RLUpdate():
+    '''
+    RLUpdate - uses reinforcement learning to update queries
+    
+    To compute the gradient with RL:
+    1. compute advantages by whitening scores
+        1. `advantage[i] = (scores[i] - scores.mean()) / scores.std()`
+    2. compute advantage loss
+        1. `advantage_loss[i] = advantage[i] * (query_embedding - result_embedding[i])**2`
+    3. compute distance loss
+        1. `distance_loss[i] = distance_penalty * (query_embedding - result_embedding[i])**2`
+    4. sum loss terms
+        1. `loss[i] = advantage_loss[i] + distance_loss[i]`
+    5. compute the gradient
+    
+    This gives a closed for calculation of the gradient as:
+    
+    `grad[i] = 2 * (advantage[i] + distance_penalty) * (query_embedding - result_embedding[i])`    
+    '''
     def __init__(self,
-                 lrs: Union[List[float], np.ndarray],
-                 distance_penalty: float
+                 lrs: Union[List[float], np.ndarray],            # list of learning rates
+                 distance_penalty: float,                        # distance penalty coefficient
+                 max_norm: Optional[float]=None,                 # optional max grad norm for clipping
+                 norm_type: Optional[Union[float, int, str]]=2.0 # norm type
                 ):
         self.lrs = np.array(lrs)
         self.distance_penalty = distance_penalty
+        self.max_norm = max_norm
+        self.norm_type = norm_type
+        
+    def compute_grad(self, query: Query):
+        query_embedding = np.array(query.embedding)
+        result_embeddings = np.array([i.embedding for i in query.valid_results()])
+        scores = np.array([i.score for i in query.valid_results()])
+        
+        advantages = whiten(scores) + self.distance_penalty
+        query_distances = query_embedding[None] - result_embeddings
+        
+        grad = (2 * advantages[:, None] * query_distances).mean(0)
+        
+        if self.max_norm is not None:
+            current_norm = np.linalg.norm(grad, ord=self.norm_type)
+            coef = np.minimum(self.max_norm / (current_norm + 1e-6), 1)
+            grad = grad * coef
+        
+        return grad
         
     def __call__(self, queries: List[Query]) -> List[Query]:
-        query_embeddings = np.array([i.embedding for i in queries])
-        
-        result_embeddings = [np.array([i.embedding for i in query.valid_results()]) 
-                             for query in queries]
-        
-        advantages = [whiten(np.array([i.score for i in query.valid_results()])) 
-                      for query in queries]
-
-        advantage_grad = np.array(
-                        [(advantages[i][:,None] * (2*(query_embeddings[i,None] - result_embeddings[i]))).mean(0)
-                        for i in range(len(queries))])
-
-        distance_grad = 2*(query_embeddings - np.array([i.mean(0) for i in result_embeddings]))
-
-        grads = advantage_grad + (self.distance_penalty * distance_grad)
-
-        new_embeddings = query_embeddings[:,None] - (grads[:,None,:] * self.lrs[None,:,None])
-        # (n,m,-1) = (n,1,-1) - ((n,1,-1) * (1,m,1))
         
         results = []
         
-        for i in range(new_embeddings.shape[0]): # number of embeddings
-            for j in range(new_embeddings.shape[1]): # learning rates
+        for query in queries:
+            grad = self.compute_grad(query)
+            query_embedding = np.array(query.embedding)
+            new_embeddings = query_embedding[None] - (grad[None] * self.lrs[:,None])  # (1,n) - (1,n) * (k,1)
+            
+            for i in range(new_embeddings.shape[0]):
+                assert new_embeddings[i].shape == query_embedding.shape
                 
-                new_query = Query.from_parent_query(embedding=new_embeddings[i][j].tolist(), 
-                                                    parent_query=queries[i])
+                new_query = Query.from_parent_query(embedding=new_embeddings[i].tolist(), 
+                                                    parent_query=query)
+                
                 new_query.data['rl_update_details'] = {
-                                                        'parent_embedding' : query_embeddings[i].tolist(),
-                                                        'lr' : self.lrs[j],
-                                                        'grad' : grads[i].tolist(),
+                                                        'parent_embedding' : query_embedding.tolist(),
+                                                        'lr' : self.lrs[i],
+                                                        'grad' : grad.tolist(),
                                                     }
                 
                 results.append(new_query)
-
+                
         return results

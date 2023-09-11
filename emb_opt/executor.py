@@ -9,10 +9,14 @@ from .utils import batch_list, unbatch_list
 
 # %% ../nbs/02_executor.ipynb 5
 class Executor():
+    '''
+    Basic Executor class. Batches inputs, sends 
+    batches to `function`, unbatches outputs
+    '''
     def __init__(self, 
-                 function: Callable,
-                 batched: bool,
-                 batch_size: int=1
+                 function: Callable, # function to be wrapped
+                 batched: bool,      # if inputs should be batched
+                 batch_size: int=1   # batch size (set batch_size=0 to pass all inputs)
                 ):
         self.function = function
         self.batched = batched
@@ -42,11 +46,15 @@ class Executor():
 
 # %% ../nbs/02_executor.ipynb 7
 class ProcessExecutor(Executor):
+    '''
+    ProcessExecutor - executes function with 
+    multiprocessing using `ProcessPoolExecutor`
+    '''
     def __init__(self,
-                 function: Callable,
-                 batched: bool,
-                 batch_size: int=1,
-                 concurrency: Optional[int]=1,
+                 function: Callable,           # function to be wrapped
+                 batched: bool,                # if inputs should be batched
+                 batch_size: int=1,            # batch size (set batch_size=0 to pass all inputs)
+                 concurrency: Optional[int]=1  # number of concurrent processes
                 ):
         
         self.function = function
@@ -65,11 +73,15 @@ class ProcessExecutor(Executor):
 
 # %% ../nbs/02_executor.ipynb 9
 class ThreadExecutor(Executor):
+    '''
+    ProcessExecutor - executes function with 
+    multiple threads using `ThreadPoolExecutor`
+    '''
     def __init__(self,
-                 function: Callable,
-                 batched: bool,
-                 batch_size: int=1,
-                 concurrency: Optional[int]=1,
+                 function: Callable,           # function to be wrapped
+                 batched: bool,                # if inputs should be batched
+                 batch_size: int=1,            # batch size (set batch_size=0 to pass all inputs)
+                 concurrency: Optional[int]=1  # number of concurrent threads
                 ):
         
         self.function = function
@@ -88,12 +100,16 @@ class ThreadExecutor(Executor):
 
 # %% ../nbs/02_executor.ipynb 11
 class DatasetExecutor(Executor):
+    '''
+    DatasetExecutor - executes function in parallel 
+    using `Dataset.map`
+    '''
     def __init__(self,
-                 function: Callable,
-                 batched: bool,
-                 batch_size: int=1,
-                 concurrency: Optional[int]=1,
-                 map_kwargs: Optional[dict]=None
+                 function: Callable,              # function to be wrapped
+                 batched: bool,                   # if inputs should be batched
+                 batch_size: int=1,               # batch size (set batch_size=0 to pass all inputs)
+                 concurrency: Optional[int]=1,    # number of concurrent threads
+                 map_kwargs: Optional[dict]=None  # kwargs for `Dataset.map`
                 ):
         
         self.function = function

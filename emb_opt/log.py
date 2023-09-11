@@ -7,7 +7,7 @@ __all__ = ['Log', 'Node', 'QueryTree']
 from .imports import *
 from .schemas import Query, Batch
 
-# %% ../nbs/09_log.ipynb 4
+# %% ../nbs/09_log.ipynb 5
 class Log():
     def __init__(self):
         self.batch_log = []
@@ -45,7 +45,7 @@ class Log():
                          key=lambda x: x['score'] if x['score'] else float('-inf'), reverse=True)
         return results
 
-# %% ../nbs/09_log.ipynb 5
+# %% ../nbs/09_log.ipynb 7
 class Node():
     def __init__(self, query: Query, iteration: int):
         self.query = query
@@ -74,7 +74,7 @@ class Node():
         self.parent = parent
         parent.children[self.id] = self
 
-# %% ../nbs/09_log.ipynb 6
+# %% ../nbs/09_log.ipynb 8
 class QueryTree():
     def __init__(self):
         self.id_dict = {}
@@ -82,7 +82,7 @@ class QueryTree():
         self.leaf_nodes = []
         self.final_nodes = []
         
-    def build_tree(self, log):
+    def build_tree(self, log: Log):
         for iteration, batch in enumerate(log.batch_log):
             for query in batch:
                 node = Node(query, iteration)

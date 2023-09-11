@@ -8,21 +8,28 @@ from .imports import *
 from .schemas import Batch, Query, Item
 
 # %% ../nbs/01_utils.ipynb 4
-def batch_list(inputs: list, 
-               batch_size: int
-              ) -> list[list]:
+def batch_list(inputs: List[Any],   # input list to be batched
+               batch_size: int      # batch size
+              ) -> List[List[Any]]: # batched output list
+    '''
+    batches the input list into chunks of size `batch_size`, with the last batch ragged
+    
+    if `batch_size=0`, returns list of all inputs
+    '''
     if batch_size==0:
         output = [inputs]
     else:
         output = [inputs[i:i+batch_size] for i in range(0, len(inputs), batch_size)]
     return output
 
-def unbatch_list(inputs: list[list]) -> list:
+def unbatch_list(inputs: List[List[Any]] # input batched list
+                ) -> List[Any]:          # flattened output list
+    'flattens a batched list'
     return [item for sublist in inputs for item in sublist]
 
 # %% ../nbs/01_utils.ipynb 6
 def whiten(scores: np.ndarray # vector shape (n,) of scores to whiten
-          ) -> np.ndarray: # vector shape (n,) whitened scores
+          ) -> np.ndarray:    # vector shape (n,) whitened scores
     'Whitens vector of scores'
     mean = scores.mean()
     var = scores.var()
@@ -30,7 +37,12 @@ def whiten(scores: np.ndarray # vector shape (n,) of scores to whiten
     return (scores - mean) / np.sqrt(var + 1e-8)
 
 # %% ../nbs/01_utils.ipynb 7
-def build_batch_from_embeddings(embeddings: List[List[float]]) -> Batch:
+def build_batch_from_embeddings(embeddings: List[List[float]] # input embeddings
+                               ) -> Batch:                    # output batch
+    '''
+    creates a `Batch` from a list of `embeddings`. Each embedding 
+    is converted to a `Query` with a unique `collection_id`
+    '''
     queries = []
     for i, embedding in enumerate(embeddings):
         query = Query.from_minimal(embedding=embedding)
@@ -41,7 +53,16 @@ def build_batch_from_embeddings(embeddings: List[List[float]]) -> Batch:
     return batch
 
 # %% ../nbs/01_utils.ipynb 9
-def build_batch_from_items(items: List[Item], remap_collections=False) -> Batch:
+def build_batch_from_items(items: List[Item],      # input items
+                           remap_collections=False # if collection ID should be remapped
+                          ) -> Batch:              # output batch
+    '''
+    creates a `Batch` from a list of `Item` objects. Each `Item` 
+    is converted to a `Query`. If `remap_collections=True`, each 
+    `Query` is given a unique `collection_id`. Otherwise, each 
+    `Query` retains the `collection_id` of the `Item` used to 
+    create it
+    '''
     queries = []
     for i, item in enumerate(items):
         query = Query.from_item(item)

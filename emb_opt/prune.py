@@ -8,10 +8,10 @@ from .imports import *
 from .module import Module
 from .schemas import Item, Query, Batch, PruneFunction, PruneResponse
 
-# %% ../nbs/07_prune.ipynb 4
+# %% ../nbs/07_prune.ipynb 5
 class PruneModule(Module):
     def __init__(self,
-                 function: PruneFunction,
+                 function: PruneFunction # prune function
                 ):
         super().__init__(PruneResponse, function)
         
@@ -28,16 +28,73 @@ class PruneModule(Module):
             if not result.valid:
                 batch_item.update_internal(removed=True, removal_reason='prune response invalid')
 
-# %% ../nbs/07_prune.ipynb 6
+# %% ../nbs/07_prune.ipynb 8
 class PrunePlugin():
+    '''
+    PrunePlugin - documentation for plugin functions to `PruneFunction`
+    
+    A valid `PruneFunction` is any function that maps `List[Query]` to 
+    `List[PruneResponse]`. The inputs will be given as `Query` objects. 
+    The outputs can be either a list of `PruneResponse` objects or a list of 
+    valid json dictionaries that match the `PruneResponse` schema
+    
+    The Prune step is called after scoring, so each result `Item` in the 
+    input queries will have a score assigned
+    
+    Item schema:
+    
+    `{
+        'id' : Optional[Union[str, int]]
+        'item' : Optional[Any],
+        'embedding' : List[float],
+        'score' : float,
+        'data' : Optional[Dict],
+    }`
+    
+    
+    Query schema:
+    
+    `{
+        'item' : Optional[Any],
+        'embedding' : List[float],
+        'data' : Optional[Dict],
+        'query_results': List[Item]
+    }`
+    
+    Input schema:
+    
+    `List[Query]`
+    
+    PruneResponse schema:
+    
+    `{
+        'valid' : bool,
+        'data' : Optional[Dict],
+    }`
+    
+    Output schema:
+    
+    `List[PruneResponse]`
+    
+    '''
     def __call__(self, inputs: List[Query]) -> List[PruneResponse]:
         pass
 
-# %% ../nbs/07_prune.ipynb 7
+# %% ../nbs/07_prune.ipynb 10
 class TopKGlobalPrune():
+    '''
+    TopKGlobalPrune - keeps the top `k` best queries 
+    by aggregated score, removing the rest.
+    
+    If `agg='mean'`, each `Query` is scored by the average 
+    score of all `Item` results in the `Query`.
+    
+    If `agg='max'`, each `Query` is scored by the max 
+    score of all `Item` results in the `Query`. 
+    '''
     def __init__(self,
-                 k: int,
-                 agg: str='mean'
+                 k: int,         # top k queries to keep
+                 agg: str='mean' # score aggregation method, should be one of ['mean', 'max']
                 ):
         self.k = k
         self.agg = agg
@@ -66,8 +123,19 @@ class TopKGlobalPrune():
             
         return outputs
 
-# %% ../nbs/07_prune.ipynb 9
+# %% ../nbs/07_prune.ipynb 12
 class TopKPruneLocal(TopKGlobalPrune):
+    '''
+    TopKPruneLocal - keeps the top `k` best queries 
+    within each `collection_id` group by aggregated score, 
+    removing the rest.
+    
+    If `agg='mean'`, each `Query` is scored by the average 
+    score of all `Item` results in the `Query`.
+    
+    If `agg='max'`, each `Query` is scored by the max 
+    score of all `Item` results in the `Query`. 
+    '''
     def __call__(self, queries: List[Query]) -> List[PruneResponse]:
         query_groups = defaultdict(list)
         idx_groups = defaultdict(list)

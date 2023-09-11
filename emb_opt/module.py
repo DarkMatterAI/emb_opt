@@ -9,9 +9,19 @@ from .schemas import Batch
 
 # %% ../nbs/03_module.ipynb 4
 class Module():
+    '''
+    Module - module base class
+    
+    Given an input `Batch`, the `Module`:
+    1. gathers inputs to the `function`
+    2. executes the `function`
+    3. validates the results of the `function` with `output_schema`
+    4. scatters results back into the `Batch`
+    
+    '''
     def __init__(self, 
-                 output_schema: BaseModel,
-                 function: Callable[List[BaseModel], List[BaseModel]], 
+                 output_schema: BaseModel,                              # expected output schema
+                 function: Callable[List[BaseModel], List[BaseModel]],  # function to be called
                 ):
         self.output_schema = output_schema
         self.function = function

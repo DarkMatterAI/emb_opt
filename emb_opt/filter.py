@@ -8,10 +8,10 @@ from .imports import *
 from .module import Module
 from .schemas import Item, Query, Batch, FilterFunction, FilterResponse
 
-# %% ../nbs/05_filter.ipynb 4
+# %% ../nbs/05_filter.ipynb 5
 class FilterModule(Module):
     def __init__(self,
-                 function: FilterFunction
+                 function: FilterFunction # filter function
                 ):
         super().__init__(FilterResponse, function)
         
@@ -31,7 +31,41 @@ class FilterModule(Module):
         for query in batch:
             query.update_internal()
 
-# %% ../nbs/05_filter.ipynb 6
+# %% ../nbs/05_filter.ipynb 7
 class FilterPlugin():
-    def __call__(self, inputs: List[Query]) -> List[FilterResponse]:
+    '''
+    FilterPlugin - documentation for plugin functions to `FilterFunction`
+    
+    A valid `FilterFunction` is any function that maps `List[Item]` to
+    `List[FilterResponse]`. The inputs will be given as `Item` objects. 
+    The outputs can be either a list of `FilterResponse` objects or a list 
+    of valid json dictionaries that match the `FilterResponse` schema.
+    
+    Item schema:
+    
+    `{
+        'id' : Optional[Union[str, int]]
+        'item' : Optional[Any],
+        'embedding' : List[float],
+        'score' : None, # will be None at this stage
+        'data' : Optional[Dict],
+    }`
+    
+    Input schema:
+    
+    `List[Item]`
+    
+    FilterResponse schema:
+
+    `{
+        'valid' : bool,
+        'data' : Optional[Dict],
+    }`
+    
+    Output schema:
+    
+    `List[FilterResponse]`
+    
+    '''
+    def __call__(self, inputs: List[Item]) -> List[FilterResponse]:
         pass
