@@ -33,7 +33,7 @@ def whiten(scores: np.ndarray # vector shape (n,) of scores to whiten
 def build_batch_from_embeddings(embeddings: List[List[float]]) -> Batch:
     queries = []
     for i, embedding in enumerate(embeddings):
-        query = Query(item=None, embedding=embedding, data=None, query_results=None)
+        query = Query.from_minimal(embedding=embedding)
         query.update_internal(collection_id=i)
         queries.append(query)
         

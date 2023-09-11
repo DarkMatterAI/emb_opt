@@ -75,10 +75,13 @@ class RLUpdate():
         self.distance_penalty = distance_penalty
         
     def __call__(self, queries: List[Query]) -> List[Query]:
-
         query_embeddings = np.array([i.embedding for i in queries])
-        result_embeddings = [np.array([i.embedding for i in query]) for query in queries]
-        advantages = [whiten(np.array([i.score for i in query])) for query in queries]
+        
+        result_embeddings = [np.array([i.embedding for i in query.valid_results()]) 
+                             for query in queries]
+        
+        advantages = [whiten(np.array([i.score for i in query.valid_results()])) 
+                      for query in queries]
 
         advantage_grad = np.array(
                         [(advantages[i][:,None] * (2*(query_embeddings[i,None] - result_embeddings[i]))).mean(0)
@@ -93,9 +96,17 @@ class RLUpdate():
         
         results = []
         
-        for i in range(new_embeddings.shape[0]):
-            for j in range(new_embeddings.shape[1]):
-                results.append(
-                    Query.from_parent_query(embedding=new_embeddings[i][j].tolist(), parent_query=queries[i]))
+        for i in range(new_embeddings.shape[0]): # number of embeddings
+            for j in range(new_embeddings.shape[1]): # learning rates
+                
+                new_query = Query.from_parent_query(embedding=new_embeddings[i][j].tolist(), 
+                                                    parent_query=queries[i])
+                new_query.data['rl_update_details'] = {
+                                                        'parent_embedding' : query_embeddings[i].tolist(),
+                                                        'lr' : self.lrs[j],
+                                                        'grad' : grads[i].tolist(),
+                                                    }
+                
+                results.append(new_query)
 
         return results

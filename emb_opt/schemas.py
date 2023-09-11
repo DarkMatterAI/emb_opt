@@ -10,14 +10,15 @@ from .imports import *
 
 # %% ../nbs/00_schemas.ipynb 5
 class InteralData(BaseModel):
-    id: str
     removed: bool
     removal_reason: Optional[str]
     parent_id: Optional[str]
     collection_id: Optional[int]
+    iteration: Optional[int]
 
 # %% ../nbs/00_schemas.ipynb 6
 class Item(BaseModel, extra='allow'):
+    id: Optional[Union[str, int]]
     item: Optional[Any]
     embedding: List[float]
     score: Optional[float]
@@ -27,14 +28,18 @@ class Item(BaseModel, extra='allow'):
     def _fill_internal(self):
         if not hasattr(self, 'internal'):
             self.internal = InteralData(
-                                    id=str(uuid.uuid1()), 
                                     removed=False, 
                                     removal_reason=None,
                                     parent_id=None, 
-                                    collection_id=None)
+                                    collection_id=None,
+                                    iteration=None
+                                    )
         
         if self.data is None:
             self.data = {}
+            
+        if self.id is None:
+            self.id = f'item_{str(uuid.uuid1())}'
             
         return self
     
@@ -42,11 +47,12 @@ class Item(BaseModel, extra='allow'):
         self.internal.__dict__.update(kwargs)
         
     @classmethod
-    def from_minimal(cls, item=None, embedding=None, score=None, data=None):
-        return cls(item=item, embedding=embedding, score=score, data=data)
+    def from_minimal(cls, id=None, item=None, embedding=None, score=None, data=None):
+        return cls(id=id, item=item, embedding=embedding, score=score, data=data)
 
 # %% ../nbs/00_schemas.ipynb 8
 class Query(BaseModel, extra='allow'):
+    id: Optional[Union[str, int]]
     item: Optional[Any]
     embedding: List[float]
     data: Optional[dict]
@@ -77,8 +83,13 @@ class Query(BaseModel, extra='allow'):
     @model_validator(mode='after')
     def _fill_internal(self):
         if not hasattr(self, 'internal'):
-            self.internal = InteralData(id=str(uuid.uuid1()), removed=False, removal_reason=None,
-                                    parent_id=None, collection_id=None)
+            self.internal = InteralData(
+                                        removed=False, 
+                                        removal_reason=None,      
+                                        parent_id=None, 
+                                        collection_id=None,
+                                        iteration=None
+                                    )
         
         if self.query_results is None:
             self.query_results = []
@@ -86,27 +97,29 @@ class Query(BaseModel, extra='allow'):
         if self.data is None:
             self.data = {}
             
+        if self.id is None:
+            self.id = f'query_{str(uuid.uuid1())}'
+            
         return self
                 
     @classmethod
     def from_item(cls, item: Item):
-        query = cls(item=item.item, embedding=item.embedding, data=item.data, query_results=None)
-        query.internal.parent_id = item.internal.id
-        query.internal.collection_id = item.internal.collection_id
+        query = cls(id=None, item=item.item, embedding=item.embedding, data=item.data, query_results=None)
+        query.update_internal(parent_id=item.id, collection_id=item.internal.collection_id)
         return query
     
     @classmethod
     def from_parent_query(cls, embedding: List[float], parent_query):
-        query = cls(item=None, embedding=embedding, data=None, query_results=None)
-        query.internal.parent_id = parent_query.internal.id
-        query.internal.collection_id = parent_query.internal.collection_id
+        query = cls(id=None, item=None, embedding=embedding, data=None, query_results=None)
+        query.update_internal(parent_id=parent_query.id, collection_id=parent_query.internal.collection_id)
         return query
     
     def add_query_results(self, query_results: List[Item]):
-        parent_id = self.internal.id
+        parent_id = self.id
         collection_id = self.internal.collection_id
+        iteration = self.internal.iteration
         for result in query_results:
-            result.update_internal(parent_id=parent_id, collection_id=collection_id)
+            result.update_internal(parent_id=parent_id, collection_id=collection_id, iteration=iteration)
             self.query_results.append(result)
     
     def update_internal(self, **kwargs):
@@ -115,8 +128,8 @@ class Query(BaseModel, extra='allow'):
             self.internal.__dict__.update({'removed':True, 'removal_reason':'all query results removed'})
             
     @classmethod
-    def from_minimal(cls, item=None, embedding=None, data=None, query_results=None):
-        return cls(item=item, embedding=embedding, data=data, query_results=query_results)
+    def from_minimal(cls, id=None, item=None, embedding=None, data=None, query_results=None):
+        return cls(id=None, item=item, embedding=embedding, data=data, query_results=query_results)
 
 # %% ../nbs/00_schemas.ipynb 10
 class Batch(BaseModel):
@@ -136,6 +149,11 @@ class Batch(BaseModel):
             return self.queries[query_index][result_index]
         else:
             return self.queries[query_index]
+        
+    def valid_queries(self):
+        for query in self.queries:
+            if not query.internal.removed:
+                yield query
         
     def enumerate_queries(self, skip_removed=True):
         for i, query in enumerate(self.queries):
