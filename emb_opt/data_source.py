@@ -84,7 +84,7 @@ class DataSourcePlugin():
     def __call__(self, inputs: List[Query]) -> List[DataSourceResponse]:
         pass
 
-# %% ../nbs/04_data_source.ipynb 10
+# %% ../nbs/04_data_source.ipynb 11
 class NumpyDataPlugin(DataSourcePlugin):
     '''
     NumpyDataPlugin - data plugin for working with numpy arrays. The 

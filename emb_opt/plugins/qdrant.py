@@ -17,6 +17,19 @@ except:
 
 # %% ../../nbs/plugins/01_qdrant.ipynb 5
 class QdrantDataPlugin(DataSourcePlugin):
+    '''
+    QdrantDataPlugin - data plugin for working with 
+    a qdrant vector database.
+    
+    The data query will run `k` nearest neighbors against the 
+    qdrant collection `collection_name`
+    
+    Optionally, `item_key` denotes the key in an object's payload 
+    corresponding to the item value
+    
+    `search_request_kwargs` are optional kwargs sent to 
+    `models.SearchRequest`
+    '''
     def __init__(self,
                  k: int,                                     # k nearest neighbors to return
                  collection_name: str,                       # qdrant collection name
