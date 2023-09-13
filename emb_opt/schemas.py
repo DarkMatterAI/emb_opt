@@ -124,7 +124,8 @@ class Query(BaseModel, extra='allow'):
         '''
         query = cls(item=item.item, embedding=item.embedding, data=item.data, query_results=None)
         query.data['_source_item_id'] = item.id
-        query.update_internal(parent_id=item.internal.parent_id, collection_id=item.internal.collection_id)
+        query.update_internal(parent_id=item.internal.parent_id, 
+                              collection_id=item.internal.collection_id)
         return query
     
     @classmethod
@@ -135,18 +136,18 @@ class Query(BaseModel, extra='allow'):
         the parent ID
         '''
         query = cls(item=None, embedding=embedding, data={}, query_results=None)
-        query.update_internal(parent_id=parent_query.id, collection_id=parent_query.internal.collection_id)
+        query.update_internal(parent_id=parent_query.id, 
+                              collection_id=parent_query.internal.collection_id)
         return query
     
     def add_query_results(self, query_results: List[Item]) -> None:
         '''
         Adds query results and propagates query parent information to them
         '''
-        parent_id = self.id
-        collection_id = self.internal.collection_id
-        iteration = self.internal.iteration
         for result in query_results:
-            result.update_internal(parent_id=parent_id, collection_id=collection_id, iteration=iteration)
+            result.update_internal(parent_id=self.id, 
+                                   collection_id=self.internal.collection_id, 
+                                   iteration=self.internal.iteration)
             self.query_results.append(result)
     
     def update_internal(self, **kwargs):

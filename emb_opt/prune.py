@@ -100,15 +100,18 @@ class TopKGlobalPrune():
         self.agg = agg
         assert self.agg in ['mean', 'max']
         
+    def agg_scores(self, query: Query):
+        result_scores = np.array([i.score for i in query.valid_results()])
+        if self.agg=='mean':
+            result_scores = result_scores.mean()
+        elif self.agg == 'max':
+            result_scores = result_scores.max()
+        return result_scores
+        
     def prune_queries(self, queries: List[Query]) -> List[PruneResponse]:
         scores = []
         for query in queries:
-            result_scores = np.array([i.score for i in query.valid_results()])
-            if self.agg=='mean':
-                result_scores = result_scores.mean()
-            elif self.agg == 'max':
-                result_scores = result_scores.max()
-            scores.append(result_scores)
+            scores.append(self.agg_scores(query))
             
         scores = np.array(scores)
         topk_idxs = set(scores.argsort()[::-1][:self.k])

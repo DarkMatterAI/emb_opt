@@ -122,6 +122,21 @@ class NumpyDataPlugin(DataSourcePlugin):
         self.distance_metric = distance_metric
         self.distance_cutoff = distance_cutoff if distance_cutoff is not None else float('inf')
         
+    def get_data(self, idx):
+        data = None
+        item_value = None
+        item_id = None
+        
+        if self.item_data:
+            data = dict(self.item_data[idx])
+            if self.id_key:
+                item_id = data.pop(self.id_key)
+                
+            if self.item_key:
+                item_value = data.pop(self.item_key)
+                
+        return data, item_value, item_id
+        
     def __call__(self, inputs: List[Query]) -> List[DataSourceResponse]:
         
         queries = np.array([i.embedding for i in inputs])
@@ -136,18 +151,8 @@ class NumpyDataPlugin(DataSourcePlugin):
                 distance = distances[i,j]
                 if distance < self.distance_cutoff:
                     query_data['query_distance'].append(distances[i,j])
-
-                    data = None
-                    item_value = None
-                    item_id = None
-
-                    if self.item_data:
-                        data = dict(self.item_data[j])
-                        if self.id_key:
-                            item_id = data.pop(self.id_key)
-
-                        if self.item_key:
-                            item_value = data.pop(self.item_key)
+                    
+                    data, item_value, item_id = self.get_data(j)
 
                     item = Item(id=item_id, 
                                 item=item_value,
@@ -156,7 +161,7 @@ class NumpyDataPlugin(DataSourcePlugin):
                                 score=None)
                     items.append(item)
                 
-            result = DataSourceResponse(valid=True, data=query_data, query_results=items)
+            result = DataSourceResponse(valid=bool(items), data=query_data, query_results=items)
             outputs.append(result)
             
         return outputs

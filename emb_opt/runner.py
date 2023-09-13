@@ -47,6 +47,7 @@ class Runner():
              iteration: int, 
              verbose: bool=True
             ) -> Batch:
+        
         self.prepare_batch(batch, iteration)
         
         batch = self.data_module(batch)
