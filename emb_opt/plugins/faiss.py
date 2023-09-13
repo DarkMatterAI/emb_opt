@@ -32,13 +32,17 @@ class FaissDataPlugin(DataSourcePlugin):
     
     `search_params` are optional kwargs sent to 
     `faiss.SearchParameters`
+
+    if `distance_cutoff` is specified, query results with a distance 
+    greater than `distance_cutoff` are ignored
     '''
     def __init__(self, 
-                 k: int,                                               # k nearest neighbors to return
-                 faiss_index: faiss.Index,                             # faiss index
-                 item_data: Optional[List[Dict]]=None,                 # Optional dict of item data
-                 item_key: Optional[str]=None,                         # Optional key for item value (should be in `item_data` dict)
-                 search_params: Optional[faiss.SearchParameters]=None  # faiss search params
+                 k: int,                                                # k nearest neighbors to return
+                 faiss_index: faiss.Index,                              # faiss index
+                 item_data: Optional[List[Dict]]=None,                  # Optional dict of item data
+                 item_key: Optional[str]=None,                          # Optional key for item value (should be in `item_data` dict)
+                 search_params: Optional[faiss.SearchParameters]=None,  # faiss search params
+                 distance_cutoff: Optional[float]=None                  # query to result distance cutoff
                 ):
         
         self.k = k
@@ -46,6 +50,7 @@ class FaissDataPlugin(DataSourcePlugin):
         self.item_data = item_data
         self.item_key = item_key
         self.search_params = search_params
+        self.distance_cutoff = distance_cutoff if distance_cutoff is not None else float('inf')
         
     def __call__(self, inputs: List[Query]) -> List[DataSourceResponse]:
         query_vectors = np.array([i.embedding for i in inputs])
@@ -59,27 +64,29 @@ class FaissDataPlugin(DataSourcePlugin):
             query_data = {'query_distance' : []}
             
             for result_idx in range(indices.shape[1]):
-                item_id = indices[query_idx, result_idx]
-                item_embedding = result_embeddings[result_idx]
-                query_distance = distances[query_idx, result_idx]
+                distance = distances[query_idx, result_idx]
                 
-                if item_id != -1:
-                    item_data = None
-                    item_value = None
-                    
-                    if self.item_data:
-                        item_data = dict(self.item_data[item_id])
-                        if self.item_key:
-                            item_value = item_data.pop(self.item_key)
-                            
-                    item = Item(id=item_id,
-                                item=item_value,
-                                embedding=item_embedding,
-                                data=item_data,
-                                score=None
-                               )
-                    items.append(item)
-                    query_data['query_distance'].append(query_distance)
+                if distance < self.distance_cutoff:
+                    item_id = indices[query_idx, result_idx]
+                    item_embedding = result_embeddings[result_idx]
+
+                    if item_id != -1:
+                        item_data = None
+                        item_value = None
+
+                        if self.item_data:
+                            item_data = dict(self.item_data[item_id])
+                            if self.item_key:
+                                item_value = item_data.pop(self.item_key)
+
+                        item = Item(id=item_id,
+                                    item=item_value,
+                                    embedding=item_embedding,
+                                    data=item_data,
+                                    score=None
+                                   )
+                        items.append(item)
+                        query_data['query_distance'].append(distance)
                     
             result = DataSourceResponse(valid=bool(items), data=query_data, query_results=items)
             outputs.append(result)

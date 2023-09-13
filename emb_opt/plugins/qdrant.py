@@ -29,13 +29,17 @@ class QdrantDataPlugin(DataSourcePlugin):
     
     `search_request_kwargs` are optional kwargs sent to 
     `models.SearchRequest`
+    
+    if `distance_cutoff` is specified, query results with a distance 
+    greater than `distance_cutoff` are ignored
     '''
     def __init__(self,
-                 k: int,                                     # k nearest neighbors to return
-                 collection_name: str,                       # qdrant collection name
-                 qdrant_client: QdrantClient,                # qdrant client
-                 item_key: Optional[str]=None,               # key in qdrant payload denoting item value
-                 search_request_kwargs: Optional[dict]=None  # optional kwargs for `SearchRequest`
+                 k: int,                                      # k nearest neighbors to return
+                 collection_name: str,                        # qdrant collection name
+                 qdrant_client: QdrantClient,                 # qdrant client
+                 item_key: Optional[str]=None,                # key in qdrant payload denoting item value
+                 search_request_kwargs: Optional[dict]=None,  # optional kwargs for `SearchRequest`
+                 distance_cutoff: Optional[float]=None        # query to result distance cutoff
                 ):
         
         self.k = k
@@ -43,6 +47,7 @@ class QdrantDataPlugin(DataSourcePlugin):
         self.qdrant_client = qdrant_client
         self.item_key = item_key
         self.search_request_kwargs = search_request_kwargs if search_request_kwargs else {}
+        self.distance_cutoff = distance_cutoff if distance_cutoff is not None else float('inf')
         
     def __call__(self, inputs: List[Query]) -> List[DataSourceResponse]:
         
@@ -61,16 +66,18 @@ class QdrantDataPlugin(DataSourcePlugin):
             items = []
             query_data = {'query_distance':[]}
             for query_result in result_batch:
-                payload = query_result.payload
-                item_value = payload.pop(self.item_key) if self.item_key is not None else None
-                item = Item(id=query_result.id,
-                            item=item_value,
-                            embedding=query_result.vector,
-                            score=None,
-                            data=payload
-                           )
-                items.append(item)
-                query_data['query_distance'].append(query_result.score)
+                distance = query_result.score
+                if distance < self.distance_cutoff:
+                    payload = query_result.payload
+                    item_value = payload.pop(self.item_key) if self.item_key is not None else None
+                    item = Item(id=query_result.id,
+                                item=item_value,
+                                embedding=query_result.vector,
+                                score=None,
+                                data=payload
+                               )
+                    items.append(item)
+                    query_data['query_distance'].append(distance)
                 
             result = DataSourceResponse(valid=bool(items), data=query_data, query_results=items)
             outputs.append(result)

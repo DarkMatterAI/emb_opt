@@ -62,13 +62,17 @@ class HugggingfaceDataPlugin(DataSourcePlugin):
     
     Optionally, `item_key` denotes the column in `dataset` defining a 
     specific item, and `id_key` denotes the column defining an item's ID
+    
+    if `distance_cutoff` is specified, query results with a distance 
+    greater than `distance_cutoff` are ignored
     '''
     def __init__(self,
-                 k: int,                       # k nearest neighbors to return
-                 dataset: datasets.Dataset,    # input dataset
-                 index_name: str,              # name of the faiss index in `dataset`
-                 item_key: Optional[str]=None, # dataset column denoting item value
-                 id_key: Optional[str]=None    # dataset column denoting item id
+                 k: int,                                # k nearest neighbors to return
+                 dataset: datasets.Dataset,             # input dataset
+                 index_name: str,                       # name of the faiss index in `dataset`
+                 item_key: Optional[str]=None,          # dataset column denoting item value
+                 id_key: Optional[str]=None,            # dataset column denoting item id
+                 distance_cutoff: Optional[float]=None  # query to result distance cutoff
                 ):
         
         self.k = k
@@ -77,6 +81,7 @@ class HugggingfaceDataPlugin(DataSourcePlugin):
         self.index = self.dataset.get_index(index_name)
         self.item_key = item_key
         self.id_key = id_key
+        self.distance_cutoff = distance_cutoff if distance_cutoff is not None else float('inf')
         
     def __call__(self, inputs: List[Query]) -> List[DataSourceResponse]:
         queries = np.array([i.embedding for i in inputs])
@@ -90,20 +95,22 @@ class HugggingfaceDataPlugin(DataSourcePlugin):
             items = []
             query_data = {'query_distance' : []}
             for j in range(indices.shape[1]):
-                query_data['query_distance'].append(distances[i,j])
-                
-                dataset_index = indices[i, j]
-                item_data = dict(self.dataset[int(dataset_index)])
-                embedding = item_data.pop(self.index_name)
-                item = item_data.pop(self.item_key) if self.item_key else None
-                item_id = item_data.pop(self.id_key) if self.id_key else None
-                
-                item = Item(id=item_id, 
-                            item=item,
-                            embedding=embedding, 
-                            data=item_data, 
-                            score=None)
-                items.append(item)
+                distance = distances[i,j]
+                if distance < self.distance_cutoff:
+                    query_data['query_distance'].append(distance)
+
+                    dataset_index = indices[i, j]
+                    item_data = dict(self.dataset[int(dataset_index)])
+                    embedding = item_data.pop(self.index_name)
+                    item = item_data.pop(self.item_key) if self.item_key else None
+                    item_id = item_data.pop(self.id_key) if self.id_key else None
+
+                    item = Item(id=item_id, 
+                                item=item,
+                                embedding=embedding, 
+                                data=item_data, 
+                                score=None)
+                    items.append(item)
                 
             result = DataSourceResponse(valid=True, data=query_data, query_results=items)
             outputs.append(result)

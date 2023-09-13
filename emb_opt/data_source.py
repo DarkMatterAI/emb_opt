@@ -100,6 +100,9 @@ class NumpyDataPlugin(DataSourcePlugin):
     
     `distance_metric` is any valid scipy distance metric. see 
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.cdist.html
+    
+    if `distance_cutoff` is specified, query results with a distance 
+    greater than `distance_cutoff` are ignored
     '''
     def __init__(self,
                  k: int,                               # k nearest neighbors to return
@@ -107,7 +110,8 @@ class NumpyDataPlugin(DataSourcePlugin):
                  item_data: Optional[List[Dict]]=None, # Optional dict of item data
                  id_key: Optional[str]=None,           # Optional key for item id (should be in `item_data` dict)
                  item_key: Optional[str]=None,         # Optional key for item value (should be in `item_data` dict)
-                 distance_metric: str='euclidean'      # distance metric, see options at https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.cdist.html
+                 distance_metric: str='euclidean',     # distance metric, see options at https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.cdist.html
+                 distance_cutoff: Optional[float]=None # query to result distance cutoff
                 ):
         
         self.k = k
@@ -116,6 +120,7 @@ class NumpyDataPlugin(DataSourcePlugin):
         self.id_key = id_key
         self.item_key = item_key
         self.distance_metric = distance_metric
+        self.distance_cutoff = distance_cutoff if distance_cutoff is not None else float('inf')
         
     def __call__(self, inputs: List[Query]) -> List[DataSourceResponse]:
         
@@ -128,26 +133,28 @@ class NumpyDataPlugin(DataSourcePlugin):
             items = []
             query_data = {'query_distance' : []}
             for j in topk[i]:
-                query_data['query_distance'].append(distances[i,j])
-                
-                data = None
-                item_value = None
-                item_id = None
-                
-                if self.item_data:
-                    data = dict(self.item_data[j])
-                    if self.id_key:
-                        item_id = data.pop(self.id_key)
-                        
-                    if self.item_key:
-                        item_value = data.pop(self.item_key)
-                                
-                item = Item(id=item_id, 
-                            item=item_value,
-                            embedding=self.item_embeddings[j], 
-                            data=data, 
-                            score=None)
-                items.append(item)
+                distance = distances[i,j]
+                if distance < self.distance_cutoff:
+                    query_data['query_distance'].append(distances[i,j])
+
+                    data = None
+                    item_value = None
+                    item_id = None
+
+                    if self.item_data:
+                        data = dict(self.item_data[j])
+                        if self.id_key:
+                            item_id = data.pop(self.id_key)
+
+                        if self.item_key:
+                            item_value = data.pop(self.item_key)
+
+                    item = Item(id=item_id, 
+                                item=item_value,
+                                embedding=self.item_embeddings[j], 
+                                data=data, 
+                                score=None)
+                    items.append(item)
                 
             result = DataSourceResponse(valid=True, data=query_data, query_results=items)
             outputs.append(result)
