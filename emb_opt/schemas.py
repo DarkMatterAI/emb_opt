@@ -58,10 +58,10 @@ class Item(BaseModel, extra='allow'):
 
 # %% ../nbs/00_schemas.ipynb 12
 class Query(BaseModel, extra='allow'):
-    item: Optional[Any]
-    embedding: List[float]
-    data: Optional[dict]
-    query_results: Optional[list[Item]]
+    item: Optional[Any]                  # Optional item associated with query
+    embedding: List[float]               # Query embedding
+    data: Optional[dict]                 # data associated with the query
+    query_results: Optional[list[Item]]  # list of `Item` query results
         
     def __iter__(self):
         return iter(self.query_results)

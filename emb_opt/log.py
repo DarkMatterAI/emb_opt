@@ -116,3 +116,7 @@ class Log():
         results = sorted([i for i in output_dict.values()], 
                          key=lambda x: x['score'] if x['score'] else float('-inf'), reverse=True)
         return results
+    
+    def dump_batch_log(self):
+        output = {'batch_log' : [i.model_dump() for i in self.batch_log]}
+        return output
