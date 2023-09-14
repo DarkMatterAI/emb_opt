@@ -71,11 +71,19 @@ class UpdatePlugin():
 
 # %% ../nbs/08_update.ipynb 11
 class UpdatePluginGradientWrapper():
+    '''
+    UpdatePluginGradientWrapper - this class wraps a valid 
+    `UpdateFunction` to estimate the gradient of new queries 
+    using the results and scores computed for the parent query.
+    
+    This wrapper integrates with `DataPluginGradWrapper`, which 
+    allows us to create new query vectors based on the gradient
+    '''
     def __init__(self, 
-                 function: UpdateFunction,
-                 distance_penalty: float=0,
-                 max_norm: Optional[float] = None,
-                 norm_type: Optional[Union[float, int, str]] = 2.0
+                 function: UpdateFunction,                          # `UpdateFunction` to wrap
+                 distance_penalty: float=0,                         # RL grad distance penalty
+                 max_norm: Optional[float] = None,                  # max grad norm
+                 norm_type: Optional[Union[float, int, str]] = 2.0  # grad norm type
                 ):
         
         self.function = function
@@ -108,7 +116,7 @@ class UpdatePluginGradientWrapper():
             
         return outputs
 
-# %% ../nbs/08_update.ipynb 12
+# %% ../nbs/08_update.ipynb 13
 class TopKDiscreteUpdate(UpdatePlugin):
     '''
     TopKDiscreteUpdate - discrete update that 
@@ -132,7 +140,7 @@ class TopKDiscreteUpdate(UpdatePlugin):
         outputs = [Query.from_item(i) for i in outputs]
         return outputs
 
-# %% ../nbs/08_update.ipynb 14
+# %% ../nbs/08_update.ipynb 15
 class TopKContinuousUpdate():
     '''
     TopKContinuousUpdate - continuous update that 
@@ -157,7 +165,7 @@ class TopKContinuousUpdate():
             outputs.append(output)
         return outputs
 
-# %% ../nbs/08_update.ipynb 16
+# %% ../nbs/08_update.ipynb 17
 class RLUpdate():
     '''
     RLUpdate - uses reinforcement learning to update queries
