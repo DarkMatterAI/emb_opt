@@ -147,9 +147,12 @@ class TopKPrune():
             
         return idx_groups, query_groups
     
-    def scatter_queries(self, idx_groups: dict, query_groups: dict)  -> List[PruneResponse]:
+    def scatter_queries(self, 
+                        idx_groups: dict, 
+                        query_groups: dict, 
+                        total_queries: int)  -> List[PruneResponse]:
         
-        outputs = [None for i in queries]
+        outputs = [None for i in range(total_queries)]
         
         for key, query_list in query_groups.items():
             prune_results = self.prune_queries(query_list)
@@ -162,5 +165,5 @@ class TopKPrune():
     
     def __call__(self, queries: List[Query]) -> List[PruneResponse]:
         idx_groups, query_groups = self.group_queries(queries)
-        results = self.scatter_queries(idx_groups, query_groups)
+        results = self.scatter_queries(idx_groups, query_groups, len(queries))
         return results
