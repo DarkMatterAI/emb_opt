@@ -8,25 +8,55 @@ __all__ = ['UpdateModule', 'UpdatePlugin', 'UpdatePluginGradientWrapper', 'TopKD
 from .imports import *
 from .utils import compute_rl_grad, query_to_rl_inputs
 from .module import Module
-from .schemas import Item, Query, Batch, UpdateFunction
+from .schemas import Item, Query, Batch, UpdateFunction, UpdateResponse
 
 # %% ../nbs/08_update.ipynb 5
+# class UpdateModule(Module):
+#     def __init__(self, function: UpdateFunction):
+#         super().__init__(UpdateResponse, function)
+        
+#     def gather_inputs(self, batch: Batch) -> (List[Tuple], List[Query]):
+#         idxs, inputs = batch.flatten_queries()
+#         return (idxs, inputs)
+    
+#     def __call__(self, batch: Batch) -> Batch:
+        
+#         idxs, inputs = self.gather_inputs(batch)
+#         new_queries = self.function(inputs)
+#         new_queries = self.validate_schema(new_queries)
+#         return Batch(queries=new_queries)
+
 class UpdateModule(Module):
     def __init__(self, function: UpdateFunction):
-        super().__init__(Query, function)
+        super().__init__(UpdateResponse, function)
         
     def gather_inputs(self, batch: Batch) -> (List[Tuple], List[Query]):
         idxs, inputs = batch.flatten_queries()
         return (idxs, inputs)
     
+    def scatter_results(self, inputs: List[Query], results: List[UpdateResponse]) -> Batch:
+        id_dict = {i.id : i for i in inputs}
+        
+        new_queries = []
+        for result in results:
+            query = result.query
+            parent_query = id_dict.get(result.parent_id, None)
+            if parent_query is not None:
+                query.update_internal(parent_id=parent_query.id, 
+                                      collection_id=parent_query.internal.collection_id)
+
+            new_queries.append(query)
+        return Batch(queries=new_queries)
+    
     def __call__(self, batch: Batch) -> Batch:
         
         idxs, inputs = self.gather_inputs(batch)
-        new_queries = self.function(inputs)
-        new_queries = self.validate_schema(new_queries)
-        return Batch(queries=new_queries)
+        results = self.function(inputs)
+        results = self.validate_schema(results)
+        new_batch = self.scatter_results(inputs, results)
+        return new_batch
 
-# %% ../nbs/08_update.ipynb 10
+# %% ../nbs/08_update.ipynb 9
 class UpdatePlugin():
     '''
     UpdatePlugin - documentation for plugin functions to `UpdateFunction`
@@ -57,19 +87,26 @@ class UpdatePlugin():
         'query_results': List[Item]
     }`
     
+    UpdateResponse schema:
+    
+    `{
+        'query' : Query,
+        'parent_id' : Optional[str],
+    }`
+    
     Input schema:
     
     `List[Query]`
 
     Output schema:
     
-    `List[Query]`
+    `List[UpdateResponse]`
     
     '''
-    def __call__(self, inputs: List[Query]) -> List[Query]:
+    def __call__(self, inputs: List[Query]) -> List[UpdateResponse]:
         pass
 
-# %% ../nbs/08_update.ipynb 11
+# %% ../nbs/08_update.ipynb 10
 class UpdatePluginGradientWrapper():
     '''
     UpdatePluginGradientWrapper - this class wraps a valid 
@@ -91,13 +128,15 @@ class UpdatePluginGradientWrapper():
         self.max_norm = max_norm
         self.norm_type = norm_type
         
-    def __call__(self, inputs: List[Query]) -> List[Query]:
+    def __call__(self, inputs: List[Query]) -> List[UpdateResponse]:
         outputs = self.function(inputs)
         
         id_dict = {i.id : i for i in inputs}
         
-        for query in outputs:
-            parent = id_dict.get(query.internal.parent_id, None)
+        for update_result in outputs:
+            query = update_result.query
+            parent_id = update_result.parent_id
+            parent = id_dict.get(parent_id, None)
             if parent:
                 _, result_embeddings, scores = query_to_rl_inputs(parent)
                 query_embedding = np.array(query.embedding)
@@ -112,11 +151,36 @@ class UpdatePluginGradientWrapper():
             else:
                 grad = np.zeros(np.array(query.embedding).shape)
                 
-            query.data['_score_grad'] = grad
+            update_result.query.data['_score_grad'] = grad
             
         return outputs
+        
+#     def __call__(self, inputs: List[Query]) -> List[Query]:
+#         outputs = self.function(inputs)
+        
+#         id_dict = {i.id : i for i in inputs}
+        
+#         for query in outputs:
+#             parent = id_dict.get(query.internal.parent_id, None)
+#             if parent:
+#                 _, result_embeddings, scores = query_to_rl_inputs(parent)
+#                 query_embedding = np.array(query.embedding)
+#                 grad = compute_rl_grad(query_embedding, 
+#                                        result_embeddings, 
+#                                        scores,
+#                                        distance_penalty=self.distance_penalty,
+#                                        max_norm=self.max_norm, 
+#                                        norm_type=self.norm_type,
+#                                        score_grad=True
+#                                       )
+#             else:
+#                 grad = np.zeros(np.array(query.embedding).shape)
+                
+#             query.data['_score_grad'] = grad
+            
+#         return outputs
 
-# %% ../nbs/08_update.ipynb 13
+# %% ../nbs/08_update.ipynb 12
 class TopKDiscreteUpdate(UpdatePlugin):
     '''
     TopKDiscreteUpdate - discrete update that 
@@ -128,7 +192,7 @@ class TopKDiscreteUpdate(UpdatePlugin):
                 ):
         self.k = k
         
-    def __call__(self, inputs: List[Query]) -> List[Query]:
+    def __call__(self, inputs: List[Query]) -> List[UpdateResponse]:
         outputs = []
         
         for query in inputs:
@@ -137,10 +201,11 @@ class TopKDiscreteUpdate(UpdatePlugin):
             top_items = [query[i] for i in topk_idxs]
             outputs += top_items
             
-        outputs = [Query.from_item(i) for i in outputs]
+        outputs = [UpdateResponse(query=Query.from_item(i), parent_id=i.internal.parent_id) 
+                                  for i in outputs]
         return outputs
 
-# %% ../nbs/08_update.ipynb 15
+# %% ../nbs/08_update.ipynb 14
 class TopKContinuousUpdate():
     '''
     TopKContinuousUpdate - continuous update that 
@@ -152,7 +217,7 @@ class TopKContinuousUpdate():
                 ):
         self.k = k
         
-    def __call__(self, inputs: List[Query]) -> List[Query]:
+    def __call__(self, inputs: List[Query]) -> List[UpdateResponse]:
         outputs = []
         
         for query in inputs:
@@ -161,11 +226,13 @@ class TopKContinuousUpdate():
             topk_embs = np.array([query[i].embedding for i in topk_idxs])
             
             new_embedding = np.average(topk_embs, 0)
-            output = Query.from_parent_query(embedding=new_embedding, parent_query=query)
+            output = UpdateResponse(query=Query.from_parent_query(embedding=new_embedding, 
+                                                                  parent_query=query),
+                                    parent_id=query.id)
             outputs.append(output)
         return outputs
 
-# %% ../nbs/08_update.ipynb 17
+# %% ../nbs/08_update.ipynb 16
 class RLUpdate():
     '''
     RLUpdate - uses reinforcement learning to update queries
@@ -204,7 +271,7 @@ class RLUpdate():
         
         return grad
         
-    def __call__(self, queries: List[Query]) -> List[Query]:
+    def __call__(self, queries: List[Query]) -> List[UpdateResponse]:
         
         results = []
         
@@ -225,6 +292,6 @@ class RLUpdate():
                                                         'grad' : grad.tolist(),
                                                     }
                 
-                results.append(new_query)
+                results.append(UpdateResponse(query=new_query, parent_id=query.id))
                 
         return results

@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['DataSourceFunction', 'FilterFunction', 'ScoreFunction', 'PruneFunction', 'UpdateFunction', 'InteralData', 'Item',
-           'Query', 'Batch', 'DataSourceResponse', 'FilterResponse', 'ScoreResponse', 'PruneResponse']
+           'Query', 'Batch', 'DataSourceResponse', 'FilterResponse', 'ScoreResponse', 'PruneResponse', 'UpdateResponse']
 
 # %% ../nbs/00_schemas.ipynb 3
 from .imports import *
@@ -287,4 +287,9 @@ class PruneResponse(BaseModel):
 PruneFunction = Callable[List[Query], List[PruneResponse]]
 
 # %% ../nbs/00_schemas.ipynb 38
-UpdateFunction = Callable[List[Query], List[Query]]
+class UpdateResponse(BaseModel):
+    query: Query                # the new `Query`
+    parent_id: Optional[str]    # optional parent query ID, used for tracking query progression
+
+# %% ../nbs/00_schemas.ipynb 39
+UpdateFunction = Callable[List[Query], List[UpdateResponse]]
