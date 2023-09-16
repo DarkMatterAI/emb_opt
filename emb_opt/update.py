@@ -11,21 +11,6 @@ from .module import Module
 from .schemas import Item, Query, Batch, UpdateFunction, UpdateResponse
 
 # %% ../nbs/08_update.ipynb 5
-# class UpdateModule(Module):
-#     def __init__(self, function: UpdateFunction):
-#         super().__init__(UpdateResponse, function)
-        
-#     def gather_inputs(self, batch: Batch) -> (List[Tuple], List[Query]):
-#         idxs, inputs = batch.flatten_queries()
-#         return (idxs, inputs)
-    
-#     def __call__(self, batch: Batch) -> Batch:
-        
-#         idxs, inputs = self.gather_inputs(batch)
-#         new_queries = self.function(inputs)
-#         new_queries = self.validate_schema(new_queries)
-#         return Batch(queries=new_queries)
-
 class UpdateModule(Module):
     def __init__(self, function: UpdateFunction):
         super().__init__(UpdateResponse, function)
@@ -154,31 +139,6 @@ class UpdatePluginGradientWrapper():
             update_result.query.data['_score_grad'] = grad
             
         return outputs
-        
-#     def __call__(self, inputs: List[Query]) -> List[Query]:
-#         outputs = self.function(inputs)
-        
-#         id_dict = {i.id : i for i in inputs}
-        
-#         for query in outputs:
-#             parent = id_dict.get(query.internal.parent_id, None)
-#             if parent:
-#                 _, result_embeddings, scores = query_to_rl_inputs(parent)
-#                 query_embedding = np.array(query.embedding)
-#                 grad = compute_rl_grad(query_embedding, 
-#                                        result_embeddings, 
-#                                        scores,
-#                                        distance_penalty=self.distance_penalty,
-#                                        max_norm=self.max_norm, 
-#                                        norm_type=self.norm_type,
-#                                        score_grad=True
-#                                       )
-#             else:
-#                 grad = np.zeros(np.array(query.embedding).shape)
-                
-#             query.data['_score_grad'] = grad
-            
-#         return outputs
 
 # %% ../nbs/08_update.ipynb 12
 class TopKDiscreteUpdate(UpdatePlugin):
