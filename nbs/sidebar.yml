@@ -20,4 +20,6 @@ website:
           - plugins/02_faiss.ipynb
       - section: tutorials
         contents:
-          - tutorials/00_basic_example.ipynb
+          - tutorials/00_basic_tutorial.ipynb
+          - tutorials/01_advanced_tutorial.ipynb
+          - tutorials/03_tuning.ipynb
