@@ -2,11 +2,24 @@ website:
   sidebar:
     contents:
       - index.ipynb
-      - 00_utils.ipynb
-      - 01_core.ipynb
-      - 02_query_update.ipynb
-      - 03_faiss.ipynb
-      - 04_huggingface.ipynb
-      - 05_qdrant.ipynb
-      - 06_chroma.ipynb
-      - 07_runner.ipynb
+      - 00_schemas.ipynb
+      - 01_utils.ipynb
+      - 02_executor.ipynb
+      - 03_module.ipynb
+      - 04_data_source.ipynb
+      - 05_filter.ipynb
+      - 06_score.ipynb
+      - 07_prune.ipynb
+      - 08_update.ipynb
+      - 09_log.ipynb
+      - 10_runner.ipynb
+      - section: plugins
+        contents:
+          - plugins/00_hf.ipynb
+          - plugins/01_qdrant.ipynb
+          - plugins/02_faiss.ipynb
+      - section: tutorials
+        contents:
+          - tutorials/00_basic_tutorial.ipynb
+          - tutorials/01_advanced_tutorial.ipynb
+          - tutorials/03_tuning.ipynb
