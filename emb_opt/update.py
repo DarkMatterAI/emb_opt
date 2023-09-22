@@ -31,6 +31,7 @@ class UpdateModule(Module):
                                       collection_id=parent_query.internal.collection_id)
 
             new_queries.append(query)
+            
         return Batch(queries=new_queries)
     
     def __call__(self, batch: Batch) -> Batch:

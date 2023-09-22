@@ -254,9 +254,9 @@ class Batch(BaseModel):
 
 # %% ../nbs/00_schemas.ipynb 26
 class DataSourceResponse(BaseModel):
-    valid: bool                # if input `Query` was valid (if False, associated `Query` is removed)
-    data: Optional[Dict]       # optional dict of data associated with the query
-    query_results: List[Item]  # list of `Item` results
+    valid: bool                       # if input `Query` was valid (if False, associated `Query` is removed)
+    data: Optional[Dict]              # optional dict of data associated with the query
+    query_results: List[Item]         # list of `Item` results
 
 # %% ../nbs/00_schemas.ipynb 27
 DataSourceFunction = Callable[List[Query], List[DataSourceResponse]]
