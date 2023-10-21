@@ -186,11 +186,6 @@ class DataPluginGradWrapper():
                 ):
         self.function = function
         self.lrs = np.array(lrs)
-        self.output_schema = DataSourceResponse
-        
-    def validate_schema(self, results: List[BaseModel]) -> List[BaseModel]:
-        results = [self.output_schema.model_validate(i) for i in results]
-        return results
         
     def gather_inputs(self, inputs: List[Query]) -> (List[Tuple], List[Query]):
         new_inputs = []
@@ -240,7 +235,6 @@ class DataPluginGradWrapper():
         
         idxs, new_inputs = self.gather_inputs(inputs)
         results = self.function(new_inputs)
-        results = self.validate_schema(results)
         outputs = self.scatter_results(inputs, idxs, results)
         return outputs
 

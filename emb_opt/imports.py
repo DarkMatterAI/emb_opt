@@ -1,7 +1,6 @@
 from typing import Union, Optional, Callable, Tuple, Any, List, Dict
 import warnings
 from collections import defaultdict
-import requests
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import uuid
 
