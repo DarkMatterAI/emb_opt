@@ -5,6 +5,8 @@ __all__ = ['Executor', 'ProcessExecutor', 'ThreadExecutor']
 
 # %% ../nbs/02_executor.ipynb 3
 from .imports import *
+import httpx
+import asyncio
 from .utils import batch_list, unbatch_list
 
 # %% ../nbs/02_executor.ipynb 5
