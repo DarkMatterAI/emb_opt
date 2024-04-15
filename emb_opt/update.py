@@ -157,9 +157,10 @@ class TopKDiscreteUpdate(UpdatePlugin):
         outputs = []
         
         for query in inputs:
-            result_scores = np.array([i.score for i in query.valid_results()])
+            valid_results = [i for i in query.valid_results()]
+            result_scores = np.array([i.score for i in valid_results])
             topk_idxs = result_scores.argsort()[::-1][:self.k]
-            top_items = [query[i] for i in topk_idxs]
+            top_items = [valid_results[i] for i in topk_idxs]
             outputs += top_items
             
         outputs = [UpdateResponse(query=Query.from_item(i), parent_id=i.internal.parent_id) 
@@ -182,9 +183,11 @@ class TopKContinuousUpdate():
         outputs = []
         
         for query in inputs:
-            result_scores = np.array([i.score for i in query.valid_results()])
+            valid_results = [i for i in query.valid_results()]
+            result_scores = np.array([i.score for i in valid_results])
+            
             topk_idxs = result_scores.argsort()[::-1][:self.k]
-            topk_embs = np.array([query[i].embedding for i in topk_idxs])
+            topk_embs = np.array([valid_results[i].embedding for i in topk_idxs])
             
             new_embedding = np.average(topk_embs, 0)
             output = UpdateResponse(query=Query.from_parent_query(embedding=new_embedding, 
@@ -192,6 +195,7 @@ class TopKContinuousUpdate():
                                     parent_id=query.id)
             outputs.append(output)
         return outputs
+    
 
 # %% ../nbs/08_update.ipynb 16
 class RLUpdate():
